@@ -1,5 +1,5 @@
 # Contest 1 Project
-CSE 4083 – Formal Languages and Automata Theory
+CSE 3120 – Computer Architecture and Assembly
 
 ## Team Name
 Ildem_Marcet
