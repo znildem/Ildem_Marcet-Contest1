@@ -1,8 +1,13 @@
+; Main file to control execution
+
 INCLUDE Irvine32.inc
 
+menu PROTO; runs the menu
+
 .code
+
 main PROC
-	mov eax, 2
+	call menu
 	exit
 main ENDP
 

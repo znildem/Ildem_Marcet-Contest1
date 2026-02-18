@@ -5,6 +5,12 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AverageSilaghiClass", "AverageSilaghiClass\AverageSilaghiClass.vcxproj", "{A3E239CF-C3B4-4B82-9E7B-CE1AF3ADBBC4}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Source Code", "Source Code", "{9DE45171-5003-4EC6-AD5D-D0B6AE18A7EB}"
+	ProjectSection(SolutionItems) = preProject
+		AverageSilaghiClass\Main.asm = AverageSilaghiClass\Main.asm
+		AverageSilaghiClass\Menu.asm = AverageSilaghiClass\Menu.asm
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
