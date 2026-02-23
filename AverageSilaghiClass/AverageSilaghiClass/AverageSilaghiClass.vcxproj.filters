@@ -4,4 +4,7 @@
     <MASM Include="Main.asm" />
     <MASM Include="MainMenu.asm" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="credits.txt" />
+  </ItemGroup>
 </Project>

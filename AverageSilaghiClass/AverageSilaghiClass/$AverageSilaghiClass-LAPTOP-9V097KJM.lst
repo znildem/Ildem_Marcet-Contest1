@@ -1,5 +1,5 @@
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    02/23/26 13:00:22
-MainMenu.asm						     Page 1 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    02/18/26 15:09:50
+Menu.asm						     Page 1 - 1
 
 
 				; This will handle most of the main menu stuff
@@ -26,176 +26,30 @@ MainMenu.asm						     Page 1 - 1
  00000000			.data
  00000000 20			space BYTE ' '
  00000001 0D 0A			newLine BYTE 0Dh, 0Ah
-
-				; Title information
- 00000003 41 6E 20 41 76	gameTitle BYTE "An Average Class with Dr. Silaghi...", 0
+ 00000003  00000050 [		rowBuffer BYTE 80 DUP(? ), 0
+	    00
+	   ] 00
+ 00000054 41 6E 20 41 76	gameTitle BYTE "An Average Class with Dr. Silaghi..."
 	   65 72 61 67 65
 	   20 43 6C 61 73
 	   73 20 77 69 74
 	   68 20 44 72 2E
 	   20 53 69 6C 61
 	   67 68 69 2E 2E
-	   2E 00
-
-				; Menu options information
- 00000028 53 54 41 52 54	menuOptions BYTE	"START", 0,
-	   00 43 52 45 44
-	   49 54 53 00 45
-	   58 49 54 00
-									"CREDITS", 0,
-									"EXIT", 0
- 0000003B 03			numOfMenuOptions BYTE 3
- 0000003C 00			currMenuOption BYTE 0
- 0000003D 02			menuOptionsStartRow BYTE 2
-
-				; Credits information
- 0000003E 63 72 65 64 69	creditsTextFile BYTE "credits.txt", 0
-	   74 73 2E 74 78
-	   74 00
- = 00001388			CREDITS_BUFFER_SIZE = 5000
- 0000004A  00001388 [		creditsBuffer BYTE CREDITS_BUFFER_SIZE DUP(?)
-	    00
-	   ]
- 000013D2 00000000		creditsBytesRead DWORD ?
+	   2E
 
  00000000			.code
-				PUBLIC MainMenu
+				PUBLIC menu
 
-				; Main menu function
-				; OUT:
-				;	al: currMenuOption
- 00000000			MainMenu PROC
- 00000000				main_loop_start:
- 00000000  E8 0000004C				call WriteMenu
- 00000005  E8 00000000 E			call ReadKey
-						.if al == 0Dh
- 0000000E  E8 000000A6					call EnterPressed
-						.elseif al == 0 ; Special Character
-							.if ah == 72 ; UP ARROW
-								.if currMenuOption > 0
- 00000027  FE 0D 0000003C R						dec currMenuOption
-								.endif
-							.elseif ah == 80 ; DOWN ARROW
- 00000034  A0 0000003B R					mov al, numOfMenuOptions
- 00000039  FE C8						dec al
-								.if currMenuOption < al
- 00000043  FE 05 0000003C R						inc currMenuOption
-								.endif
-							.endif
-						.endif
-
- 00000049  EB B5				jmp main_loop_start
- 0000004B				procedure_end:
- 0000004B  A0 0000003C R		mov al, currMenuOption
- 00000050  C3				ret
- 00000051			MainMenu ENDP
-
- 00000051			WriteMenu PROC
-					; Writing title
- 00000051  E8 00000000 E		call Clrscr
- 00000056  B8 0000000F			mov eax, white + (black * 16)
- 0000005B  E8 00000000 E		call SetTextColor
- 00000060  BA 00000003 R		mov edx, OFFSET gameTitle
- 00000065  E8 00000000 E		call WriteString
-
-					; Writing menu options
- 0000006A  B9 00000000			mov ecx, 0
- 0000006F				options_loop_start:
-
-						; Setting white for selected option
-						.if cl == currMenuOption
- 00000077  B8 000000F0					mov eax, black + (white * 16)
-						.else
- 0000007E  B8 0000000F					mov eax, white + (black * 16)
-						.endif
- 00000083  E8 00000000 E			call SetTextColor
-						
- 00000088  8A F1				mov dh, cl
- 0000008A  02 35 0000003D R			add dh, menuOptionsStartRow
- 00000090  B2 00				mov dl, 0
- 00000092  E8 00000000 E			call Gotoxy
-						
- 00000097  8B C1				mov eax, ecx
- 00000099  BE 00000028 R			mov esi, OFFSET menuOptions
- 0000009E  E8 0000006F				call FindArrString
-						
- 000000A3  BA 00000028 R			mov edx, OFFSET menuOptions
- 000000A8  03 D0				add edx, eax
- 000000AA  E8 00000000 E			call WriteString
-						
- 000000AF  41					inc ecx
- 000000B0  3A 0D 0000003B R			cmp cl, numOfMenuOptions
- 000000B6  75 B7				jne options_loop_start
-
- 000000B8  C3				ret
- 000000B9			WriteMenu ENDP
-
- 000000B9			EnterPressed PROC
-					.if currMenuOption == 0
-						; Here goes game start code
-					.elseif currMenuOption == 1
- 000000CD  E8 00000003				call Credits
-					.else
-						; Here goes exit game code
-					.endif
- 000000D4  C3				ret
- 000000D5			EnterPressed ENDP
-
- 000000D5			Credits PROC
- 000000D5  BA 0000003E R		mov edx, OFFSET creditsTextFile
- 000000DA  E8 00000000 E		call OpenInputFile
- 000000DF  BA 0000004A R		mov edx, OFFSET creditsBuffer
- 000000E4  B9 00001388			mov ecx, CREDITS_BUFFER_SIZE
- 000000E9  E8 00000000 E		call ReadFromFile
- 000000EE  A3 000013D2 R		mov creditsBytesRead, eax
-
- 000000F3  E8 00000000 E		call Clrscr
- 000000F8  B8 0000000F			mov eax, white + (black * 16)
- 000000FD  E8 00000000 E		call SetTextColor
- 00000102  BA 0000004A R		mov edx, OFFSET creditsBuffer
- 00000107  E8 00000000 E		call WriteString
- 0000010C  E8 00000000 E		call ReadChar
- 00000111  C3				ret
- 00000112			Credits ENDP
-
-				; Given a string array and an index number returns the start point of the ith string
-				; IN
-				;	eax: index (in terms of string array)
-				;	esi: array offset
-				; OUT
-				;	eax: index (in terms of byte array)
- 00000112			FindArrString PROC
- 00000112  51				push ecx
-					
-					; If input index is 0, return immediately
-					.IF eax == 0
- 00000117  EB 16				jmp procedure_end
-					.ENDIF
-					
-					
- 00000119  B9 00000000			mov ecx, 0
- 0000011E				loop_start:
-						.if BYTE PTR [esi + ecx] == 0 ; If we found an end of string
- 00000124  48						dec eax
- 00000125  75 03					jnz loop_continue ; if not done, continue
- 00000127  41						inc ecx ; off-by-one correction
- 00000128  EB 03					jmp loop_end
-						.endif
- 0000012A				loop_continue:
- 0000012A  41					inc ecx
- 0000012B  EB F1				jmp loop_start
- 0000012D				loop_end:
-					
- 0000012D  8B C1			mov eax, ecx
-					
- 0000012F				procedure_end:
- 0000012F  59				pop ecx
- 00000130  C3				ret
- 00000131			FindArrString ENDP
+ 00000000			menu PROC
+ 00000000  BA 00000054 R		mov edx, OFFSET gameTitle
+ 00000005  E8 00000000 E		call WriteString
+ 0000000A  C3				ret
+ 0000000B			menu ENDP
 
 				END
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    02/23/26 13:00:22
-MainMenu.asm						     Symbols 2 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    02/18/26 15:09:50
+Menu.asm						     Symbols 2 - 1
 
 
 
@@ -288,8 +142,8 @@ Segments and Groups:
 
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
-_DATA  . . . . . . . . . . . . .	32 Bit	 000013D6 Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 00000131 Para	  Public  'CODE'	
+_DATA  . . . . . . . . . . . . .	32 Bit	 00000078 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 0000000B Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
@@ -301,20 +155,13 @@ CloseHandle  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 Clrscr . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CreateOutputFile . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-Credits  . . . . . . . . . . . .	P Near	 000000D5 _TEXT	Length= 0000003D Public STDCALL
 Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-EnterPressed . . . . . . . . . .	P Near	 000000B9 _TEXT	Length= 0000001C Public STDCALL
 ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-FindArrString  . . . . . . . . .	P Near	 00000112 _TEXT	Length= 0000001F Public STDCALL
-  loop_start . . . . . . . . . .	L Near	 0000011E _TEXT	
-  loop_continue  . . . . . . . .	L Near	 0000012A _TEXT	
-  loop_end . . . . . . . . . . .	L Near	 0000012D _TEXT	
-  procedure_end  . . . . . . . .	L Near	 0000012F _TEXT	
 FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -344,9 +191,6 @@ HeapFree . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 HeapSize . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 IsDigit  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 LocalFree  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-MainMenu . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000051 Public STDCALL
-  main_loop_start  . . . . . . .	L Near	 00000000 _TEXT	
-  procedure_end  . . . . . . . .	L Near	 0000004B _TEXT	
 MessageBoxA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MsgBoxAsk  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MsgBox . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -401,13 +245,12 @@ WriteFloat . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 WriteHexB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteHex . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteInt . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-WriteMenu  . . . . . . . . . . .	P Near	 00000051 _TEXT	Length= 00000068 Public STDCALL
-  options_loop_start . . . . . .	L Near	 0000006F _TEXT	
 WriteStackFrameName  . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteStackFrame  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteString  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteToFile  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteWindowsMsg  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+menu . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000000B Public STDCALL
 printf . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
 scanf  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
 wsprintfA  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External C
@@ -430,7 +273,6 @@ ALT_MASK . . . . . . . . . . . .	Number	 00000003h
 CAPSLOCK_ON  . . . . . . . . . .	Number	 00000080h   
 CREATE_ALWAYS  . . . . . . . . .	Number	 00000002h   
 CREATE_NEW . . . . . . . . . . .	Number	 00000001h   
-CREDITS_BUFFER_SIZE  . . . . . .	Number	 00001388h   
 CTRL_MASK  . . . . . . . . . . .	Number	 0000000Ch   
 CreateFile . . . . . . . . . . .	Text   	 CreateFileA
 DO_NOT_SHARE . . . . . . . . . .	Number	 00000000h   
@@ -630,13 +472,9 @@ WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
 black  . . . . . . . . . . . . .	Number	 00000000h   
 blue . . . . . . . . . . . . . .	Number	 00000001h   
 brown  . . . . . . . . . . . . .	Number	 00000006h   
-creditsBuffer  . . . . . . . . .	Byte	 0000004A _DATA	
-creditsBytesRead . . . . . . . .	DWord	 000013D2 _DATA	
-creditsTextFile  . . . . . . . .	Byte	 0000003E _DATA	
-currMenuOption . . . . . . . . .	Byte	 0000003C _DATA	
 cyan . . . . . . . . . . . . . .	Number	 00000003h   
 exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
-gameTitle  . . . . . . . . . . .	Byte	 00000003 _DATA	
+gameTitle  . . . . . . . . . . .	Byte	 00000054 _DATA	
 gray . . . . . . . . . . . . . .	Number	 00000008h   
 green  . . . . . . . . . . . . .	Number	 00000002h   
 lightBlue  . . . . . . . . . . .	Number	 00000009h   
@@ -646,11 +484,9 @@ lightGreen . . . . . . . . . . .	Number	 0000000Ah
 lightMagenta . . . . . . . . . .	Number	 0000000Dh   
 lightRed . . . . . . . . . . . .	Number	 0000000Ch   
 magenta  . . . . . . . . . . . .	Number	 00000005h   
-menuOptionsStartRow  . . . . . .	Byte	 0000003D _DATA	
-menuOptions  . . . . . . . . . .	Byte	 00000028 _DATA	
 newLine  . . . . . . . . . . . .	Byte	 00000001 _DATA	
-numOfMenuOptions . . . . . . . .	Byte	 0000003B _DATA	
 red  . . . . . . . . . . . . . .	Number	 00000004h   
+rowBuffer  . . . . . . . . . . .	Byte	 00000003 _DATA	
 space  . . . . . . . . . . . . .	Byte	 00000000 _DATA	
 white  . . . . . . . . . . . . .	Number	 0000000Fh   
 wsprintf . . . . . . . . . . . .	Text   	 wsprintfA

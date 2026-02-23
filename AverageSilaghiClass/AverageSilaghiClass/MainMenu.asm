@@ -6,14 +6,22 @@ INCLUDE Irvine32.inc
 space BYTE ' '
 newLine BYTE 0Dh, 0Ah
 
+; Title information
 gameTitle BYTE "An Average Class with Dr. Silaghi...", 0
 
+; Menu options information
 menuOptions BYTE	"START", 0,
 					"CREDITS", 0,
 					"EXIT", 0
 numOfMenuOptions BYTE 3
 currMenuOption BYTE 0
 menuOptionsStartRow BYTE 2
+
+; Credits information
+creditsTextFile BYTE "credits.txt", 0
+CREDITS_BUFFER_SIZE = 5000
+creditsBuffer BYTE CREDITS_BUFFER_SIZE DUP(?)
+creditsBytesRead DWORD ?
 
 .code
 PUBLIC MainMenu
@@ -26,7 +34,7 @@ MainMenu PROC
 		call WriteMenu
 		call ReadKey
 		.if al == 0Dh
-			jmp procedure_end
+			call EnterPressed
 		.elseif al == 0 ; Special Character
 			.if ah == 72 ; UP ARROW
 				.if currMenuOption > 0
@@ -49,9 +57,7 @@ MainMenu ENDP
 
 WriteMenu PROC
 	; Writing title
-	mov dh, 0
-	mov dl, 0
-	call Gotoxy
+	call Clrscr
 	mov eax, white + (black * 16)
 	call SetTextColor
 	mov edx, OFFSET gameTitle
@@ -88,6 +94,34 @@ WriteMenu PROC
 
 	ret
 WriteMenu ENDP
+
+EnterPressed PROC
+	.if currMenuOption == 0
+		; Here goes game start code
+	.elseif currMenuOption == 1
+		call Credits
+	.else
+		; Here goes exit game code
+	.endif
+	ret
+EnterPressed ENDP
+
+Credits PROC
+	mov edx, OFFSET creditsTextFile
+	call OpenInputFile
+	mov edx, OFFSET creditsBuffer
+	mov ecx, CREDITS_BUFFER_SIZE
+	call ReadFromFile
+	mov creditsBytesRead, eax
+
+	call Clrscr
+	mov eax, white + (black * 16)
+	call SetTextColor
+	mov edx, OFFSET creditsBuffer
+	call WriteString
+	call ReadChar
+	ret
+Credits ENDP
 
 ; Given a string array and an index number returns the start point of the ith string
 ; IN
