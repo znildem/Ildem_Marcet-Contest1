@@ -3,6 +3,8 @@
   <ItemGroup>
     <MASM Include="Main.asm" />
     <MASM Include="MainMenu.asm" />
+    <MASM Include="Timers.asm" />
+    <MASM Include="Util.asm" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="credits.txt" />
