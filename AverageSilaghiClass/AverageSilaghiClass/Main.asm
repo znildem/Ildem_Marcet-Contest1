@@ -2,13 +2,13 @@
 
 INCLUDE Irvine32.inc
 
-menu PROTO; runs the menu
+MainMenu PROTO; runs the menu
 
 .code
 
-main PROC
-	call menu
+Main PROC
+	call MainMenu
 	exit
-main ENDP
+Main ENDP
 
-END main
+END Main

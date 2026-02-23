@@ -8,7 +8,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Source Code", "Source Code", "{9DE45171-5003-4EC6-AD5D-D0B6AE18A7EB}"
 	ProjectSection(SolutionItems) = preProject
 		AverageSilaghiClass\Main.asm = AverageSilaghiClass\Main.asm
-		AverageSilaghiClass\Menu.asm = AverageSilaghiClass\Menu.asm
+		AverageSilaghiClass\MainMenu.asm = AverageSilaghiClass\MainMenu.asm
 	EndProjectSection
 EndProject
 Global

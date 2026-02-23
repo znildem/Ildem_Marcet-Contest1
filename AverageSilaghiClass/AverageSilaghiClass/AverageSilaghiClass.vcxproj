@@ -157,7 +157,7 @@
     <MASM Include="Main.asm">
       <FileType>Document</FileType>
     </MASM>
-    <MASM Include="Menu.asm" />
+    <MASM Include="MainMenu.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
