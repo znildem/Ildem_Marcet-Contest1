@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    02/22/26 20:31:48
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    02/22/26 21:15:16
 MainMenu.asm						     Page 1 - 1
 
 
@@ -49,50 +49,76 @@ MainMenu.asm						     Page 1 - 1
  00000000			.code
 				PUBLIC MainMenu
 
+				; Main menu function
+				; OUT:
+				;	al: currMenuOption
  00000000			MainMenu PROC
- 00000000  E8 00000001			call WriteMenu
- 00000005  C3				ret
- 00000006			MainMenu ENDP
+ 00000000				main_loop_start:
+ 00000000  E8 00000049				call WriteMenu
+ 00000005  E8 00000000 E			call ReadKey
+						.if al == 0Dh
+ 0000000E  EB 38					jmp procedure_end
+						.elseif al == 0 ; Special Character
+							.if ah == 72 ; UP ARROW
+								.if currMenuOption > 0
+ 00000024  FE 0D 0000003C R						dec currMenuOption
+								.endif
+							.elseif ah == 80 ; DOWN ARROW
+ 00000031  A0 0000003B R					mov al, numOfMenuOptions
+ 00000036  FE C8						dec al
+								.if currMenuOption < al
+ 00000040  FE 05 0000003C R						inc currMenuOption
+								.endif
+							.endif
+						.endif
 
- 00000006			WriteMenu PROC
+ 00000046  EB B8				jmp main_loop_start
+ 00000048				procedure_end:
+ 00000048  A0 0000003C R		mov al, currMenuOption
+ 0000004D  C3				ret
+ 0000004E			MainMenu ENDP
+
+ 0000004E			WriteMenu PROC
 					; Writing title
- 00000006  B6 00			mov dh, 0
- 00000008  B2 00			mov dl, 0
- 0000000A  E8 00000000 E		call Gotoxy
- 0000000F  BA 00000003 R		mov edx, OFFSET gameTitle
- 00000014  E8 00000000 E		call WriteString
+ 0000004E  B6 00			mov dh, 0
+ 00000050  B2 00			mov dl, 0
+ 00000052  E8 00000000 E		call Gotoxy
+ 00000057  B8 0000000F			mov eax, white + (black * 16)
+ 0000005C  E8 00000000 E		call SetTextColor
+ 00000061  BA 00000003 R		mov edx, OFFSET gameTitle
+ 00000066  E8 00000000 E		call WriteString
 
 					; Writing menu options
- 00000019  B9 00000000			mov ecx, 0
- 0000001E				options_loop_start:
+ 0000006B  B9 00000000			mov ecx, 0
+ 00000070				options_loop_start:
 
 						; Setting white for selected option
-						.IF cl == currMenuOption
- 00000026  B8 000000F0					mov eax, black + (white * 16)
-						.ELSE
- 0000002D  B8 0000000F					mov eax, white + (black * 16)
-						.ENDIF
- 00000032  E8 00000000 E			call SetTextColor
+						.if cl == currMenuOption
+ 00000078  B8 000000F0					mov eax, black + (white * 16)
+						.else
+ 0000007F  B8 0000000F					mov eax, white + (black * 16)
+						.endif
+ 00000084  E8 00000000 E			call SetTextColor
 						
- 00000037  8A F1				mov dh, cl
- 00000039  02 35 0000003D R			add dh, menuOptionsStartRow
- 0000003F  B2 00				mov dl, 0
- 00000041  E8 00000000 E			call Gotoxy
+ 00000089  8A F1				mov dh, cl
+ 0000008B  02 35 0000003D R			add dh, menuOptionsStartRow
+ 00000091  B2 00				mov dl, 0
+ 00000093  E8 00000000 E			call Gotoxy
 						
- 00000046  8B C1				mov eax, ecx
- 00000048  BE 00000028 R			mov esi, OFFSET menuOptions
- 0000004D  E8 00000016				call FindArrString
+ 00000098  8B C1				mov eax, ecx
+ 0000009A  BE 00000028 R			mov esi, OFFSET menuOptions
+ 0000009F  E8 00000016				call FindArrString
 						
- 00000052  BA 00000028 R			mov edx, OFFSET menuOptions
- 00000057  03 D0				add edx, eax
- 00000059  E8 00000000 E			call WriteString
+ 000000A4  BA 00000028 R			mov edx, OFFSET menuOptions
+ 000000A9  03 D0				add edx, eax
+ 000000AB  E8 00000000 E			call WriteString
 						
- 0000005E  41					inc ecx
- 0000005F  3A 0D 0000003B R			cmp cl, numOfMenuOptions
- 00000065  75 B7				jnz options_loop_start
+ 000000B0  41					inc ecx
+ 000000B1  3A 0D 0000003B R			cmp cl, numOfMenuOptions
+ 000000B7  75 B7				jne options_loop_start
 
- 00000067  C3				ret
- 00000068			WriteMenu ENDP
+ 000000B9  C3				ret
+ 000000BA			WriteMenu ENDP
 
 				; Given a string array and an index number returns the start point of the ith string
 				; IN
@@ -100,37 +126,37 @@ MainMenu.asm						     Page 1 - 1
 				;	esi: array offset
 				; OUT
 				;	eax: index (in terms of byte array)
- 00000068			FindArrString PROC
- 00000068  51				push ecx
+ 000000BA			FindArrString PROC
+ 000000BA  51				push ecx
 					
 					; If input index is 0, return immediately
 					.IF eax == 0
- 0000006D  EB 16				jmp procedure_end
+ 000000BF  EB 16				jmp procedure_end
 					.ENDIF
 					
 					
- 0000006F  B9 00000000			mov ecx, 0
- 00000074				loop_start:
-						.IF BYTE PTR [esi + ecx] == 0 ; If we found an end of string
- 0000007A  48						dec eax
- 0000007B  75 03					jnz loop_continue ; if not done, continue
- 0000007D  41						inc ecx ; off-by-one correction
- 0000007E  EB 03					jmp loop_end
-						.ENDIF
- 00000080				loop_continue:
- 00000080  41					inc ecx
- 00000081  EB F1				jmp loop_start
- 00000083				loop_end:
+ 000000C1  B9 00000000			mov ecx, 0
+ 000000C6				loop_start:
+						.if BYTE PTR [esi + ecx] == 0 ; If we found an end of string
+ 000000CC  48						dec eax
+ 000000CD  75 03					jnz loop_continue ; if not done, continue
+ 000000CF  41						inc ecx ; off-by-one correction
+ 000000D0  EB 03					jmp loop_end
+						.endif
+ 000000D2				loop_continue:
+ 000000D2  41					inc ecx
+ 000000D3  EB F1				jmp loop_start
+ 000000D5				loop_end:
 					
- 00000083  8B C1			mov eax, ecx
+ 000000D5  8B C1			mov eax, ecx
 					
- 00000085				procedure_end:
- 00000085  59				pop ecx
- 00000086  C3				ret
- 00000087			FindArrString ENDP
+ 000000D7				procedure_end:
+ 000000D7  59				pop ecx
+ 000000D8  C3				ret
+ 000000D9			FindArrString ENDP
 
 				END
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    02/22/26 20:31:48
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    02/22/26 21:15:16
 MainMenu.asm						     Symbols 2 - 1
 
 
@@ -225,7 +251,7 @@ Segments and Groups:
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
 _DATA  . . . . . . . . . . . . .	32 Bit	 0000003E Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 00000087 Para	  Public  'CODE'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 000000D9 Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
@@ -244,11 +270,11 @@ DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-FindArrString  . . . . . . . . .	P Near	 00000068 _TEXT	Length= 0000001F Public STDCALL
-  loop_start . . . . . . . . . .	L Near	 00000074 _TEXT	
-  loop_continue  . . . . . . . .	L Near	 00000080 _TEXT	
-  loop_end . . . . . . . . . . .	L Near	 00000083 _TEXT	
-  procedure_end  . . . . . . . .	L Near	 00000085 _TEXT	
+FindArrString  . . . . . . . . .	P Near	 000000BA _TEXT	Length= 0000001F Public STDCALL
+  loop_start . . . . . . . . . .	L Near	 000000C6 _TEXT	
+  loop_continue  . . . . . . . .	L Near	 000000D2 _TEXT	
+  loop_end . . . . . . . . . . .	L Near	 000000D5 _TEXT	
+  procedure_end  . . . . . . . .	L Near	 000000D7 _TEXT	
 FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -278,7 +304,9 @@ HeapFree . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 HeapSize . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 IsDigit  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 LocalFree  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-MainMenu . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000006 Public STDCALL
+MainMenu . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000004E Public STDCALL
+  main_loop_start  . . . . . . .	L Near	 00000000 _TEXT	
+  procedure_end  . . . . . . . .	L Near	 00000048 _TEXT	
 MessageBoxA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MsgBoxAsk  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MsgBox . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -333,8 +361,8 @@ WriteFloat . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 WriteHexB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteHex . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteInt . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-WriteMenu  . . . . . . . . . . .	P Near	 00000006 _TEXT	Length= 00000062 Public STDCALL
-  options_loop_start . . . . . .	L Near	 0000001E _TEXT	
+WriteMenu  . . . . . . . . . . .	P Near	 0000004E _TEXT	Length= 0000006C Public STDCALL
+  options_loop_start . . . . . .	L Near	 00000070 _TEXT	
 WriteStackFrameName  . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteStackFrame  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteString  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL

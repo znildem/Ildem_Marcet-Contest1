@@ -18,8 +18,32 @@ menuOptionsStartRow BYTE 2
 .code
 PUBLIC MainMenu
 
+; Main menu function
+; OUT:
+;	al: currMenuOption
 MainMenu PROC
-	call WriteMenu
+	main_loop_start:
+		call WriteMenu
+		call ReadKey
+		.if al == 0Dh
+			jmp procedure_end
+		.elseif al == 0 ; Special Character
+			.if ah == 72 ; UP ARROW
+				.if currMenuOption > 0
+					dec currMenuOption
+				.endif
+			.elseif ah == 80 ; DOWN ARROW
+				mov al, numOfMenuOptions
+				dec al
+				.if currMenuOption < al
+					inc currMenuOption
+				.endif
+			.endif
+		.endif
+
+		jmp main_loop_start
+	procedure_end:
+	mov al, currMenuOption
 	ret
 MainMenu ENDP
 
@@ -28,6 +52,8 @@ WriteMenu PROC
 	mov dh, 0
 	mov dl, 0
 	call Gotoxy
+	mov eax, white + (black * 16)
+	call SetTextColor
 	mov edx, OFFSET gameTitle
 	call WriteString
 
@@ -36,11 +62,11 @@ WriteMenu PROC
 	options_loop_start:
 
 		; Setting white for selected option
-		.IF cl == currMenuOption
+		.if cl == currMenuOption
 			mov eax, black + (white * 16)
-		.ELSE
+		.else
 			mov eax, white + (black * 16)
-		.ENDIF
+		.endif
 		call SetTextColor
 		
 		mov dh, cl
@@ -58,7 +84,7 @@ WriteMenu PROC
 		
 		inc ecx
 		cmp cl, numOfMenuOptions
-		jnz options_loop_start
+		jne options_loop_start
 
 	ret
 WriteMenu ENDP
@@ -80,12 +106,12 @@ FindArrString PROC
 	
 	mov ecx, 0
 	loop_start:
-		.IF BYTE PTR [esi + ecx] == 0 ; If we found an end of string
+		.if BYTE PTR [esi + ecx] == 0 ; If we found an end of string
 			dec eax
 			jnz loop_continue ; if not done, continue
 			inc ecx ; off-by-one correction
 			jmp loop_end
-		.ENDIF
+		.endif
 	loop_continue:
 		inc ecx
 		jmp loop_start
