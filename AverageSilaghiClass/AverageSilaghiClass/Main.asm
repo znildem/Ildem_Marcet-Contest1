@@ -11,7 +11,13 @@ DrawTimer PROTO
 
 Main PROC
 	call MainMenu
-	call StartGame
+	.if al == 3 ; Exit option
+		jmp procedure_end
+	.elseif al == 0 ; Start option
+		call StartGame
+	.endif
+
+	procedure_end:
 	exit
 Main ENDP
 

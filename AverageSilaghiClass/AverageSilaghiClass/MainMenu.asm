@@ -32,12 +32,16 @@ PUBLIC MainMenu
 ; OUT:
 ;	al: currMenuOption
 MainMenu PROC
+	rewrite_menu:
 		call WriteMenu
 	main_loop_start :
 		call ReadChar
 		.if al == 0Dh
-			call EnterPressed
-			jmp main_loop_start
+			.if currMenuOption == 1
+				call Credits
+				jmp rewrite_menu
+			.endif
+			jmp procedure_end
 		.elseif al == 0 ; Special Character
 			.if ah == 72 ; UP ARROW
 				.if currMenuOption > 0
@@ -102,15 +106,9 @@ WriteMenu PROC
 	ret
 WriteMenu ENDP
 
+; Returns eax=0 if still in menu, eax=1 if giving control ba
 EnterPressed PROC
-	.if currMenuOption == 0
-		; Here goes game start code
-	.elseif currMenuOption == 1
-		call Credits
-		call WriteMenu
-	.else
-		; Here goes exit game code
-	.endif
+	
 	ret
 EnterPressed ENDP
 
