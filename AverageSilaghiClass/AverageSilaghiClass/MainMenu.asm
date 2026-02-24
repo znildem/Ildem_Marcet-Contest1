@@ -32,21 +32,24 @@ PUBLIC MainMenu
 ; OUT:
 ;	al: currMenuOption
 MainMenu PROC
-	main_loop_start:
 		call WriteMenu
-		call ReadKey
+	main_loop_start :
+		call ReadChar
 		.if al == 0Dh
 			call EnterPressed
+			jmp main_loop_start
 		.elseif al == 0 ; Special Character
 			.if ah == 72 ; UP ARROW
 				.if currMenuOption > 0
 					dec currMenuOption
+					call WriteMenu
 				.endif
 			.elseif ah == 80 ; DOWN ARROW
 				mov al, numOfMenuOptions
 				dec al
 				.if currMenuOption < al
 					inc currMenuOption
+					call WriteMenu
 				.endif
 			.endif
 		.endif
@@ -59,6 +62,8 @@ MainMenu ENDP
 
 WriteMenu PROC
 	; Writing title
+	mov eax, white + (black * 16)
+	call SetTextColor
 	call Clrscr
 	mov eax, white + (black * 16)
 	call SetTextColor
@@ -102,6 +107,7 @@ EnterPressed PROC
 		; Here goes game start code
 	.elseif currMenuOption == 1
 		call Credits
+		call WriteMenu
 	.else
 		; Here goes exit game code
 	.endif

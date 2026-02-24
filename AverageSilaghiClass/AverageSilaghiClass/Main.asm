@@ -10,7 +10,7 @@ DrawTimer PROTO
 .code
 
 Main PROC
-	;call MainMenu
+	call MainMenu
 	call StartGame
 	exit
 Main ENDP
@@ -20,6 +20,8 @@ StartGame PROC
 	abc:
 	call UpdateTimers
 	call DrawTimer
+	mov eax, 1000
+	call Delay
 	jmp abc
 StartGame ENDP
 
