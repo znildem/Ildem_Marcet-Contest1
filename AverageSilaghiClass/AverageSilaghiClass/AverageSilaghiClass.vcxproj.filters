@@ -6,6 +6,7 @@
     <MASM Include="Timers.asm" />
     <MASM Include="Util.asm" />
     <MASM Include="GameWindow.asm" />
+    <MASM Include="Game.asm" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="credits.txt" />

@@ -154,6 +154,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <MASM Include="Game.asm" />
     <MASM Include="GameWindow.asm" />
     <MASM Include="Main.asm">
       <FileType>Document</FileType>

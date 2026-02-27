@@ -2,6 +2,8 @@
 
 INCLUDE Irvine32.inc
 
+DrawTimer PROTO
+
 .data
 hBorder BYTE "+-------------------------------------++-------------------------------------+", 0
 vBorder BYTE "|                                     ||                                     |", 0
@@ -11,6 +13,7 @@ PUBLIC UpdateScreen
 
 UpdateScreen PROC
 	call DrawBase
+	call DrawTimer
 	ret
 UpdateScreen ENDP
 
