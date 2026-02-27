@@ -2,6 +2,8 @@
 
 INCLUDE Irvine32.inc
 
+.data
+cmdSizeLimiter BYTE "mode con: cols=80 lines=25", 0
 
 .code
 PUBLIC FindArrString

@@ -6,6 +6,8 @@ MainMenu PROTO; runs the menu
 StartTimers PROTO
 UpdateTimers PROTO
 DrawTimer PROTO
+SetConsoleSize PROTO
+UpdateScreen PROTO
 
 .code
 
@@ -24,6 +26,7 @@ Main ENDP
 StartGame PROC
 	call StartTimers
 	abc:
+	call UpdateScreen
 	call UpdateTimers
 	call DrawTimer
 	mov eax, 1000

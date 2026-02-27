@@ -9,6 +9,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Source Code", "Source Code"
 	ProjectSection(SolutionItems) = preProject
 		AverageSilaghiClass\Main.asm = AverageSilaghiClass\Main.asm
 		AverageSilaghiClass\MainMenu.asm = AverageSilaghiClass\MainMenu.asm
+		AverageSilaghiClass\Timers.asm = AverageSilaghiClass\Timers.asm
+		AverageSilaghiClass\Util.asm = AverageSilaghiClass\Util.asm
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Other", "Other", "{BB1FE353-D339-48F9-825A-A1E4F33B531B}"
+	ProjectSection(SolutionItems) = preProject
+		AverageSilaghiClass\credits.txt = AverageSilaghiClass\credits.txt
 	EndProjectSection
 EndProject
 Global
