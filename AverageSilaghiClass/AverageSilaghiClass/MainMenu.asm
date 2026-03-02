@@ -21,7 +21,7 @@ menuOptionsStartRow BYTE 2
 
 ; Credits information
 creditsTextFile BYTE "credits.txt", 0
-CREDITS_BUFFER_SIZE = 5000
+CREDITS_BUFFER_SIZE = 2000
 creditsBuffer BYTE CREDITS_BUFFER_SIZE DUP(?)
 creditsBytesRead DWORD ?
 
@@ -118,7 +118,6 @@ Credits PROC
 	mov edx, OFFSET creditsBuffer
 	mov ecx, CREDITS_BUFFER_SIZE
 	call ReadFromFile
-	mov creditsBytesRead, eax
 
 	call Clrscr
 	mov eax, white + (black * 16)

@@ -8,12 +8,25 @@ DrawTimer PROTO
 hBorder BYTE "+-------------------------------------++-------------------------------------+", 0
 vBorder BYTE "|                                     ||                                     |", 0
 
+; Start screen information
+scTextFile BYTE "start_screen.txt", 0
+SC_BUFFER_SIZE = 2000
+scBuffer BYTE SC_BUFFER_SIZE DUP(?)
+
+; External variables
+EXTERN currState:BYTE
+
 .code
 PUBLIC UpdateScreen
 
 UpdateScreen PROC
-	call DrawBase
-	call DrawTimer
+	.if currState == 0
+		call StartScreen
+		call DrawTimer
+	.elseif currState == 2
+		call DrawBase
+		call DrawTimer
+	.endif
 	ret
 UpdateScreen ENDP
 
@@ -59,4 +72,23 @@ DrawBase PROC
 
 	ret
 DrawBase ENDP
+
+StartScreen PROC
+	; Get start screen text
+	mov edx, OFFSET scTextFile
+	call OpenInputFile
+	mov edx, OFFSET scBuffer
+	mov ecx, SC_BUFFER_SIZE
+	call ReadFromFile
+
+	; Write start screen stuff
+	mov eax, white + (black * 16)
+	call SetTextColor
+	call Clrscr
+	mov edx, OFFSET scBuffer
+	call WriteString
+
+	ret
+StartScreen ENDP
+
 END

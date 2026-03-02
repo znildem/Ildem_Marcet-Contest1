@@ -1,8 +1,8 @@
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    02/27/26 13:31:53
-Util.asm						     Page 1 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    03/02/26 13:20:06
+Game.asm						     Page 1 - 1
 
 
-				; Useful procedures
+				; This will handle the game logic
 
 				INCLUDE Irvine32.inc
 			      C ; Include file for Irvine32.lib             (Irvine32.inc)
@@ -23,55 +23,66 @@ Util.asm						     Page 1 - 1
 			      C .LIST
 			      C 
 
+				UpdateScreen PROTO
+				StartTimers PROTO
+				UpdateTimers PROTO
+
  00000000			.data
- 00000000 6D 6F 64 65 20	cmdSizeLimiter BYTE "mode con: cols=80 lines=25", 0
-	   63 6F 6E 3A 20
-	   63 6F 6C 73 3D
-	   38 30 20 6C 69
-	   6E 65 73 3D 32
-	   35 00
+				PUBLIC currState
+ 00000000 00			currState BYTE ?
+				; Possible game states:
+					; currState=0: game start
+					; currState=1: getting quiz
+					; currState=2: solving quiz
+					; currState=3: turning in quiz
+					; currState=4: getting lab
+					; currState=5: solving lab
+					; currState=6: turning in lab
+					; currState=7: game end
 
  00000000			.code
-				PUBLIC FindArrString
+				PUBLIC Game
+ 00000000			Game PROC
+ 00000000  C6 05 00000000 R		mov currState, 0
+	   00
 
-				; Given a string array and an index number returns the start point of the ith string
-				; IN
-				;	eax: index(in terms of string array)
-				;	esi: array offset
-				; OUT
-				;	eax: index(in terms of byte array)
- 00000000			FindArrString PROC
- 00000000  51				push ecx
+ 00000007  E8 00000000 E		call StartTimers
 
-					; If input index is 0, return immediately
-					.IF eax == 0
- 00000005  EB 16				jmp procedure_end
-					.ENDIF
+					; Wait for enter key
+ 0000000C				press_enter_loop_1_start:
+ 0000000C  E8 00000000 E			call UpdateScreen
+ 00000011  E8 00000000 E			call UpdateTimers
+ 00000016  B8 000003E8				mov eax, 1000
+ 0000001B  E8 00000000 E			call Delay
+ 00000020  E8 00000000 E			call ReadKey
+ 00000025  3C 0D				cmp al, 13
+ 00000027  75 E3				jne press_enter_loop_1_start
+
+ 00000029  C6 05 00000000 R		mov currState, 1
+	   01
+
+					; Getting quiz code here
+
+ 00000030  C6 05 00000000 R		mov currState, 2
+	   02
+
+					; Quiz loop
+ 00000037				quiz_loop_start:
+ 00000037  E8 00000000 E			call UpdateScreen
+ 0000003C  E8 00000000 E			call UpdateTimers
+ 00000041  B8 000003E8				mov eax, 1000
+ 00000046  E8 00000000 E			call Delay
+ 0000004B  E8 00000000 E			call ReadKey
+ 00000050  3C 0D				cmp al, 13
+ 00000052  75 B8				jne press_enter_loop_1_start
 
 
- 00000007  B9 00000000			mov ecx, 0
- 0000000C				loop_start:
-						.if BYTE PTR[esi + ecx] == 0; If we found an end of string
- 00000012  48						dec eax
- 00000013  75 03					jnz loop_continue; if not done, continue
- 00000015  41						inc ecx; off - by - one correction
- 00000016  EB 03					jmp loop_end
-						.endif
- 00000018					loop_continue :
- 00000018  41					inc ecx
- 00000019  EB F1				jmp loop_start
- 0000001B				loop_end :
-
- 0000001B  8B C1			mov eax, ecx
-
- 0000001D				procedure_end :
- 0000001D  59				pop ecx
- 0000001E  C3				ret
- 0000001F			FindArrString ENDP
+ 00000054  C3				ret
+ 00000055			Game ENDP
 
 				END
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    02/27/26 13:31:53
-Util.asm						     Symbols 2 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    03/02/26 13:20:06
+Game.asm						     Symbols 2 - 1
 
 
 
@@ -164,8 +175,8 @@ Segments and Groups:
 
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
-_DATA  . . . . . . . . . . . . .	32 Bit	 0000001B Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 0000001F Para	  Public  'CODE'	
+_DATA  . . . . . . . . . . . . .	32 Bit	 00000001 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 00000055 Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
@@ -184,13 +195,11 @@ DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-FindArrString  . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000001F Public STDCALL
-  loop_start . . . . . . . . . .	L Near	 0000000C _TEXT	
-  loop_continue  . . . . . . . .	L Near	 00000018 _TEXT	
-  loop_end . . . . . . . . . . .	L Near	 0000001B _TEXT	
-  procedure_end  . . . . . . . .	L Near	 0000001D _TEXT	
 FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Game . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000055 Public STDCALL
+  press_enter_loop_1_start . . .	L Near	 0000000C _TEXT	
+  quiz_loop_start  . . . . . . .	L Near	 00000037 _TEXT	
 GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandTail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleCP . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -252,6 +261,7 @@ SetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 SetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ShowFPUStack . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Sleep  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+StartTimers  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 StrLength  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_compare  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_copy . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -259,6 +269,8 @@ Str_length . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 Str_trim . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_ucase  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SystemTimeToFileTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+UpdateScreen . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+UpdateTimers . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WaitMsg  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteBinB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteBin . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -498,7 +510,7 @@ WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
 black  . . . . . . . . . . . . .	Number	 00000000h   
 blue . . . . . . . . . . . . . .	Number	 00000001h   
 brown  . . . . . . . . . . . . .	Number	 00000006h   
-cmdSizeLimiter . . . . . . . . .	Byte	 00000000 _DATA	
+currState  . . . . . . . . . . .	Byte	 00000000 _DATA	Public STDCALL
 cyan . . . . . . . . . . . . . .	Number	 00000003h   
 exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
 gray . . . . . . . . . . . . . .	Number	 00000008h   

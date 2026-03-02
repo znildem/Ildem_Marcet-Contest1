@@ -8,6 +8,7 @@ UpdateTimers PROTO
 DrawTimer PROTO
 SetConsoleSize PROTO
 UpdateScreen PROTO
+Game PROTO
 
 .code
 
@@ -16,22 +17,11 @@ Main PROC
 	.if al == 3 ; Exit option
 		jmp procedure_end
 	.elseif al == 0 ; Start option
-		call StartGame
+		call Game
 	.endif
 
 	procedure_end:
 	exit
 Main ENDP
-
-StartGame PROC
-	call StartTimers
-	abc:
-	call UpdateScreen
-	call UpdateTimers
-	call DrawTimer
-	mov eax, 1000
-	call Delay
-	jmp abc
-StartGame ENDP
 
 END Main

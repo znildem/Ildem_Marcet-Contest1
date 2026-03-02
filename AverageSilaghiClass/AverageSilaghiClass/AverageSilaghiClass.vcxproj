@@ -165,6 +165,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="credits.txt" />
+    <Text Include="start_screen.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
