@@ -2,8 +2,6 @@
 
 INCLUDE Irvine32.inc
 
-DrawTimer PROTO
-
 .data
 hBorder BYTE "+-------------------------------------++-------------------------------------+", 0
 vBorder BYTE "|                                     ||                                     |", 0
@@ -18,24 +16,24 @@ EXTERN currState:BYTE
 
 .code
 PUBLIC UpdateScreen
+PUBLIC ClearScreen
 
 UpdateScreen PROC
 	.if currState == 0
 		call StartScreen
-		call DrawTimer
 	.elseif currState == 2
 		call DrawBase
-		call DrawTimer
 	.endif
 	ret
 UpdateScreen ENDP
 
-DrawBase PROC
-	; Clearing the screen
+ClearScreen PROC
 	mov eax, white + (black * 16)
 	call SetTextColor
 	call Clrscr
+ClearScreen ENDP
 
+DrawBase PROC
 	; Adding borders
 	mov eax, gray + (black * 16)
 	call SetTextColor

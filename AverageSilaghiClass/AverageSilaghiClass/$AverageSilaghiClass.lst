@@ -1,4 +1,4 @@
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    03/02/26 13:20:06
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    03/04/26 12:37:30
 Game.asm						     Page 1 - 1
 
 
@@ -24,6 +24,7 @@ Game.asm						     Page 1 - 1
 			      C 
 
 				UpdateScreen PROTO
+				ClearScreen PROTO
 				StartTimers PROTO
 				UpdateTimers PROTO
 
@@ -46,42 +47,45 @@ Game.asm						     Page 1 - 1
  00000000  C6 05 00000000 R		mov currState, 0
 	   00
 
- 00000007  E8 00000000 E		call StartTimers
+ 00000007  E8 00000000 E		call ClearScreen
+ 0000000C  E8 00000000 E		call UpdateScreen
+
+ 00000011  E8 00000000 E		call StartTimers
+
 
 					; Wait for enter key
- 0000000C				press_enter_loop_1_start:
- 0000000C  E8 00000000 E			call UpdateScreen
- 00000011  E8 00000000 E			call UpdateTimers
- 00000016  B8 000003E8				mov eax, 1000
- 0000001B  E8 00000000 E			call Delay
- 00000020  E8 00000000 E			call ReadKey
- 00000025  3C 0D				cmp al, 13
- 00000027  75 E3				jne press_enter_loop_1_start
+ 00000016				press_enter_loop_1_start:
+ 00000016  E8 00000000 E			call UpdateTimers
+ 0000001B  B8 00000032				mov eax, 50
+ 00000020  E8 00000000 E			call Delay
+ 00000025  E8 00000000 E			call ReadKey
+ 0000002A  3C 0D				cmp al, 13
+ 0000002C  75 E8				jne press_enter_loop_1_start
 
- 00000029  C6 05 00000000 R		mov currState, 1
+ 0000002E  C6 05 00000000 R		mov currState, 1
 	   01
 
 					; Getting quiz code here
 
- 00000030  C6 05 00000000 R		mov currState, 2
+ 00000035  C6 05 00000000 R		mov currState, 2
 	   02
 
 					; Quiz loop
- 00000037				quiz_loop_start:
- 00000037  E8 00000000 E			call UpdateScreen
- 0000003C  E8 00000000 E			call UpdateTimers
- 00000041  B8 000003E8				mov eax, 1000
- 00000046  E8 00000000 E			call Delay
- 0000004B  E8 00000000 E			call ReadKey
- 00000050  3C 0D				cmp al, 13
- 00000052  75 B8				jne press_enter_loop_1_start
+ 0000003C				quiz_loop_start:
+ 0000003C  E8 00000000 E			call UpdateScreen
+ 00000041  E8 00000000 E			call UpdateTimers
+ 00000046  B8 000003E8				mov eax, 1000
+ 0000004B  E8 00000000 E			call Delay
+ 00000050  E8 00000000 E			call ReadKey
+ 00000055  3C 0D				cmp al, 13
+ 00000057  75 BD				jne press_enter_loop_1_start
 
 
- 00000054  C3				ret
- 00000055			Game ENDP
+ 00000059  C3				ret
+ 0000005A			Game ENDP
 
 				END
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    03/02/26 13:20:06
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    03/04/26 12:37:30
 Game.asm						     Symbols 2 - 1
 
 
@@ -176,13 +180,14 @@ Segments and Groups:
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
 _DATA  . . . . . . . . . . . . .	32 Bit	 00000001 Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 00000055 Para	  Public  'CODE'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 0000005A Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
 
                 N a m e                 Type     Value    Attr
 
+ClearScreen  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CloseFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CloseHandle  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Clrscr . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -197,9 +202,9 @@ FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-Game . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000055 Public STDCALL
-  press_enter_loop_1_start . . .	L Near	 0000000C _TEXT	
-  quiz_loop_start  . . . . . . .	L Near	 00000037 _TEXT	
+Game . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000005A Public STDCALL
+  press_enter_loop_1_start . . .	L Near	 00000016 _TEXT	
+  quiz_loop_start  . . . . . . .	L Near	 0000003C _TEXT	
 GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandTail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleCP . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL

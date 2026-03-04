@@ -11,5 +11,16 @@
   <ItemGroup>
     <Text Include="credits.txt" />
     <Text Include="start_screen.txt" />
+    <Text Include="questions_easy.txt">
+      <Filter>Texts</Filter>
+    </Text>
+    <Text Include="answers_easy.txt">
+      <Filter>Texts</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Texts">
+      <UniqueIdentifier>{3f2d9b01-1900-4168-b223-2edad48fdfd9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

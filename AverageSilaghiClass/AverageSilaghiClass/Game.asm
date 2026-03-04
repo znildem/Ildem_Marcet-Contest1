@@ -3,6 +3,7 @@
 INCLUDE Irvine32.inc
 
 UpdateScreen PROTO
+ClearScreen PROTO
 StartTimers PROTO
 UpdateTimers PROTO
 
@@ -24,13 +25,16 @@ PUBLIC Game
 Game PROC
 	mov currState, 0
 
+	call ClearScreen
+	call UpdateScreen
+
 	call StartTimers
+
 
 	; Wait for enter key
 	press_enter_loop_1_start:
-		call UpdateScreen
 		call UpdateTimers
-		mov eax, 1000
+		mov eax, 50
 		call Delay
 		call ReadKey
 		cmp al, 13

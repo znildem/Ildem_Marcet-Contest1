@@ -10,13 +10,15 @@ FindArrString PROTO
 prev_time DWORD ?
 curr_time DWORD ?
 
-; Timer 1 information
-T1_INITIAL = 100000 ; 100 seconds in ms
-t1_remaining DWORD ?
+; Timer for the class duration
+T_CLASS_INITIAL = 100000 ; 100 seconds in ms
+T_CLASS_CHAR_LENGTH = 80
+T_CLASS_POS_X = 0
+T_CLASS_POS_Y = 24
+timer_class DWORD ?
+t_class_text BYTE "QUIZ DEADLINE                                                                   ", 0
+t_class_curr_length BYTE ?
 
-
-; Drawing information
-lineBuffer BYTE 80 DUP(' '), 0
 
 .code
 PUBLIC UpdateTimers
@@ -26,7 +28,10 @@ StartTimers PROC
 	call GetMseconds
 	mov prev_time, eax
 
-	mov t1_remaining, T1_INITIAL
+	mov timer_class, T_CLASS_INITIAL
+	mov t_class_curr_length, T_CLASS_CHAR_LENGTH
+
+	call DrawTimers
 
 	ret
 StartTimers ENDP
@@ -35,22 +40,47 @@ UpdateTimers PROC
 	call GetMseconds
 	mov curr_time, eax
 
-	mov eax, t1_remaining
+	mov eax, timer_class
 	sub eax, curr_time
 	add eax, prev_time
-	mov t1_remaining, eax
+	mov timer_class, eax
+	mov ebx, T_CLASS_CHAR_LENGTH
+	mul ebx
+	mov edx, 0
+	mov ebx, T_CLASS_INITIAL
+	div ebx; Now eax holds the number of spaces that should be filled for the timer
+	.if eax < 0
+		mov eax, 0
+	.endif
+	.if al != t_class_curr_length
+		mov dh, T_CLASS_POS_Y
+		mov dl, al
+		add dl, T_CLASS_POS_X
+		call Gotoxy
+
+		mov edx, OFFSET t_class_text
+		add edx, eax
+		mov eax, white + (black * 16)
+		call SetTextColor
+		call WriteString
+
+		mov t_class_curr_length, al
+	.endif
+
+		
+		
 
 	mov eax, curr_time
 	mov prev_time, eax
 	ret
 UpdateTimers ENDP
 
-DrawTimer PROC
-	mov eax, t1_remaining
-	mov ebx, 80
+DrawTimers PROC
+	mov eax, timer_class
+	mov ebx, T_CLASS_CHAR_LENGTH
 	mul ebx
 	mov edx, 0
-	mov ebx, T1_INITIAL
+	mov ebx, T_CLASS_INITIAL
 	div ebx
 	; Now eax holds the number of spaces that should be filled for the timer
 
@@ -58,34 +88,13 @@ DrawTimer PROC
 	mov dl, 0
 	call Gotoxy
 
-	push eax
-	mov eax, (black * 16)
+	mov eax, black + (white * 16)
 	call SetTextColor
-	pop eax
 
-	mov edx, OFFSET lineBuffer
+	mov edx, OFFSET t_class_text
 	call WriteString
 
-	mov dh, 24
-	mov dl, 0
-	call Gotoxy
-
-	push eax
-	mov eax, (white * 16)
-	call SetTextColor
-	pop eax
-
-	.if eax == 80
-		mov edx, OFFSET lineBuffer
-		call WriteString
-	.elseif eax < 80
-		mov edx, OFFSET lineBuffer
-		mov [(OFFSET lineBuffer)+eax], 0
-		call WriteString
-		mov [(OFFSET lineBuffer)+eax], ' '
-	.endif
-
 	ret
-DrawTimer ENDP
+DrawTimers ENDP
 
 END

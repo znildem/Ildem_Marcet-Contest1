@@ -164,7 +164,9 @@
     <MASM Include="Util.asm" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="answers_easy.txt" />
     <Text Include="credits.txt" />
+    <Text Include="questions_easy.txt" />
     <Text Include="start_screen.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
