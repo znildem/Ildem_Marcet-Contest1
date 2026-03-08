@@ -7,6 +7,9 @@
     <MASM Include="Util.asm" />
     <MASM Include="GameWindow.asm" />
     <MASM Include="Game.asm" />
+    <MASM Include="DinoData.asm" />
+    <MASM Include="DinoLogic.asm" />
+    <MASM Include="DinoRender.asm" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="credits.txt" />

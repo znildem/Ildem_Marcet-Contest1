@@ -7,6 +7,12 @@ ClearScreen PROTO
 StartTimers PROTO
 UpdateTimers PROTO
 
+DinoInit PROTO
+DinoTick PROTO
+
+GetAsyncKeyState PROTO, vKey:DWORD
+VK_RETURN = 0Dh
+
 .data
 PUBLIC currState
 currState BYTE ?
@@ -43,6 +49,21 @@ Game PROC
 	mov currState, 1
 
 	; Getting quiz code here
+	; Dino game should dispay here
+	call DinoInit
+	getting_quiz_loop_start:
+		call DinoTick
+		call UpdateScreen
+		call UpdateTimers
+		mov eax, 50
+		call Delay
+
+		invoke GetAsyncKeyState, VK_RETURN
+		test ax, 8000h
+		jz getting_quiz_loop_start
+
+		mov eax, 150
+		call Delay
 
 	mov currState, 2
 
@@ -52,9 +73,36 @@ Game PROC
 		call UpdateTimers
 		mov eax, 1000
 		call Delay
-		call ReadKey
-		cmp al, 13
-		jne press_enter_loop_1_start
+		
+		invoke GetAsyncKeyState, VK_RETURN
+		test ax, 8000h
+		jz quiz_loop_start
+
+		mov eax, 150
+		call Delay
+
+	; State 3: turning in quiz
+	; Dino game should display here
+	mov currState, 3
+	call DinoInit
+
+	turning_in_quiz_loop_start:
+		call DinoTick
+		call UpdateScreen
+		call UpdateTimers
+		mov eax, 50
+		call Delay
+
+		invoke GetAsyncKeyState, VK_RETURN
+		test ax, 8000h
+		jz turning_in_quiz_loop_start
+
+		mov eax, 150
+		call Delay
+
+	; End state
+	mov currState, 7
+	call UpdateScreen
 
 
 	ret

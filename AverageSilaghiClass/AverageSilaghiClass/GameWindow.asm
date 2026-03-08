@@ -2,6 +2,8 @@
 
 INCLUDE Irvine32.inc
 
+DrawDinoGame PROTO
+
 .data
 hBorder BYTE "+-------------------------------------++-------------------------------------+", 0
 vBorder BYTE "|                                     ||                                     |", 0
@@ -21,9 +23,20 @@ PUBLIC ClearScreen
 UpdateScreen PROC
 	.if currState == 0
 		call StartScreen
-	.elseif currState == 2
+	.else
+		call ClearScreen
 		call DrawBase
+
+		.if currState == 1
+			call DrawDinoGame
+		.elseif currState == 2
+			; quiz screen
+		.elseif currState == 3
+			call DrawDinoGame
+		.endif
+
 	.endif
+
 	ret
 UpdateScreen ENDP
 
@@ -72,12 +85,17 @@ DrawBase PROC
 DrawBase ENDP
 
 StartScreen PROC
-	; Get start screen text
+	; Open file
 	mov edx, OFFSET scTextFile
-	call OpenInputFile
+	call OpenInputFile        ; EAX = file handle
+
+	; Read file
 	mov edx, OFFSET scBuffer
-	mov ecx, SC_BUFFER_SIZE
-	call ReadFromFile
+	mov ecx, SC_BUFFER_SIZE - 1
+	call ReadFromFile         ; EAX = bytes read
+
+	; Null-terminate buffer
+	mov BYTE PTR [scBuffer + eax], 0
 
 	; Write start screen stuff
 	mov eax, white + (black * 16)
