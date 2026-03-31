@@ -6,6 +6,7 @@ UpdateScreen PROTO
 ClearScreen PROTO
 StartTimers PROTO
 UpdateTimers PROTO
+SwitchTimers PROTO
 
 DinoInit PROTO
 DinoTick PROTO
@@ -45,7 +46,20 @@ Game PROC
 		call ReadKey
 		cmp al, 13
 		jne press_enter_loop_1_start
+	
 
+
+	;----------------------------------------------------
+	call SwitchTimers
+	; Wait for enter key
+	press_enter_loop_0_start :
+	call UpdateTimers
+	mov eax, 50
+	call Delay
+	call ReadKey
+	cmp al, 13
+	jne press_enter_loop_0_start
+	; ----------------------------------------------------
 	mov currState, 1
 
 	; Getting quiz code here

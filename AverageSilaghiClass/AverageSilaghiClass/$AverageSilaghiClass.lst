@@ -1,9 +1,10 @@
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    03/31/26 17:26:17
-Util.asm						     Page 1 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    03/31/26 18:05:37
+Timers.asm						     Page 1 - 1
 
 
-				; Useful procedures
-
+				; Timers handling will be done in this file
+				; This does NOT handle midnight change, just dont play at midnight : P
+				
 				INCLUDE Irvine32.inc
 			      C ; Include file for Irvine32.lib             (Irvine32.inc)
 			      C 
@@ -22,56 +23,215 @@ Util.asm						     Page 1 - 1
 			      C .NOLIST
 			      C .LIST
 			      C 
-
+				
+				FindArrString PROTO
+				
  00000000			.data
- 00000000 6D 6F 64 65 20	cmdSizeLimiter BYTE "mode con: cols=80 lines=25", 0
-	   63 6F 6E 3A 20
-	   63 6F 6C 73 3D
-	   38 30 20 6C 69
-	   6E 65 73 3D 32
-	   35 00
-
+				; Last call time
+ 00000000 00000000		prev_time DWORD ?
+ 00000004 00000000		curr_time DWORD ?
+				
+				; Timer for the quiz duration
+ = 0000C350			T_CLASS_INITIAL = 50000; 50 seconds in ms
+ = 00000050			T_CLASS_CHAR_LENGTH = 80
+ = 00000000			T_CLASS_POS_X = 0
+ = 00000018			T_CLASS_POS_Y = 24
+ 00000008 00000000		timer_class DWORD ?
+ 0000000C 51 55 49 5A 20	t_class_text BYTE "QUIZ DEADLINE                                                                   ", 0
+	   44 45 41 44 4C
+	   49 4E 45 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   00
+ 0000005D 00			t_class_curr_length BYTE ?
+				
+				; Timer for the lab duration
+ = 0000C350			T_LAB_INITIAL = 50000; 50 seconds in ms
+ = 00000050			T_LAB_CHAR_LENGTH = 80
+ = 00000000			T_LAB_POS_X = 0
+ = 00000018			T_LAB_POS_Y = 24
+ 0000005E 00000000		timer_lab DWORD ?
+ 00000062 4C 41 42 20 44	t_lab_text BYTE "LAB DEADLINE                                                                    ", 0
+	   45 41 44 4C 49
+	   4E 45 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   00
+ 000000B3 00			t_lab_curr_length BYTE ?
+				
+ 000000B4 00			curr_timer BYTE 0
+				
  00000000			.code
-				PUBLIC FindArrString
-
-				; Given a string array and an index number returns the start point of the ith string
-				; IN
-				;	eax: index(in terms of string array)
-				;	esi: array offset
-				; OUT
-				;	eax: index(in terms of byte array)
- 00000000			FindArrString PROC
- 00000000  51				push ecx
-
-					; If input index is 0, return immediately
-					.IF eax == 0
- 00000005  EB 16				jmp procedure_end
-					.ENDIF
-
-
- 00000007  B9 00000000			mov ecx, 0
- 0000000C				loop_start:
-						.if BYTE PTR[esi + ecx] == 0; If we found an end of string
- 00000012  48						dec eax
- 00000013  75 03					jnz loop_continue; if not done, continue
- 00000015  41						inc ecx; off - by - one correction
- 00000016  EB 03					jmp loop_end
+				PUBLIC UpdateTimers
+				PUBLIC StartTimers
+				PUBLIC SwitchTimers
+				
+ 00000000			StartTimers PROC
+ 00000000  E8 00000000 E		call GetMseconds
+ 00000005  A3 00000000 R		mov prev_time, eax
+				
+					.if curr_timer == 0
+ 00000013  C7 05 00000008 R			mov timer_class, T_CLASS_INITIAL
+	   0000C350
+ 0000001D  C6 05 0000005D R			mov t_class_curr_length, T_CLASS_CHAR_LENGTH
+	   50
+					.else
+ 00000026  C7 05 0000005E R			mov timer_lab, T_LAB_INITIAL
+	   0000C350
+ 00000030  C6 05 000000B3 R			mov t_lab_curr_length, T_LAB_CHAR_LENGTH
+	   50
+					.endif
+				
+ 00000037  E8 000000FD			call DrawTimers
+				
+ 0000003C  C3				ret
+ 0000003D			StartTimers ENDP
+				
+ 0000003D			UpdateTimers PROC
+ 0000003D  E8 00000000 E		call GetMseconds
+ 00000042  A3 00000004 R		mov curr_time, eax
+				
+					.if curr_timer == 0
+ 00000050  A1 00000008 R			mov eax, timer_class
+ 00000055  2B 05 00000004 R			sub eax, curr_time
+ 0000005B  03 05 00000000 R			add eax, prev_time
+ 00000061  A3 00000008 R			mov timer_class, eax
+ 00000066  BB 00000050				mov ebx, T_CLASS_CHAR_LENGTH
+ 0000006B  F7 E3				mul ebx
+ 0000006D  BA 00000000				mov edx, 0
+ 00000072  BB 0000C350				mov ebx, T_CLASS_INITIAL
+ 00000077  F7 F3				div ebx; Now eax holds the number of spaces that should be filled for the timer
+						.if eax > T_CLASS_CHAR_LENGTH
+ 0000007E  B8 00000050					mov eax, T_CLASS_CHAR_LENGTH
 						.endif
- 00000018					loop_continue :
- 00000018  41					inc ecx
- 00000019  EB F1				jmp loop_start
- 0000001B				loop_end :
-
- 0000001B  8B C1			mov eax, ecx
-
- 0000001D				procedure_end :
- 0000001D  59				pop ecx
- 0000001E  C3				ret
- 0000001F			FindArrString ENDP
-
+						.if eax < 0
+ 00000088  B8 00000000					mov eax, 0
+						.endif
+						.if al != t_class_curr_length
+ 00000099  B6 18					mov dh, T_CLASS_POS_Y
+ 0000009B  8A D0					mov dl, al
+ 0000009D  80 C2 00					add dl, T_CLASS_POS_X
+ 000000A0  E8 00000000 E				call Gotoxy
+				
+ 000000A5  BA 0000000C R				mov edx, OFFSET t_class_text
+ 000000AA  03 D0					add edx, eax
+ 000000AC  B8 0000000F					mov eax, white + (black * 16)
+ 000000B1  E8 00000000 E				call SetTextColor
+ 000000B6  E8 00000000 E				call WriteString
+				
+ 000000BB  A2 0000005D R				mov t_class_curr_length, al
+						.endif
+					.else
+ 000000C2  A1 0000005E R			mov eax, timer_lab
+ 000000C7  2B 05 00000004 R			sub eax, curr_time
+ 000000CD  03 05 00000000 R			add eax, prev_time
+ 000000D3  A3 0000005E R			mov timer_lab, eax
+ 000000D8  BB 00000050				mov ebx, T_LAB_CHAR_LENGTH
+ 000000DD  F7 E3				mul ebx
+ 000000DF  BA 00000000				mov edx, 0
+ 000000E4  BB 0000C350				mov ebx, T_LAB_INITIAL
+ 000000E9  F7 F3				div ebx; Now eax holds the number of spaces that should be filled for the timer
+						.if eax > T_LAB_CHAR_LENGTH
+ 000000F0  B8 00000050					mov eax, T_LAB_CHAR_LENGTH
+						.endif
+						.if eax < 0
+ 000000FA  B8 00000000					mov eax, 0
+						.endif
+						.if al != t_lab_curr_length
+ 00000107  B6 18					mov dh, T_LAB_POS_Y
+ 00000109  8A D0					mov dl, al
+ 0000010B  80 C2 00					add dl, T_LAB_POS_X
+ 0000010E  E8 00000000 E				call Gotoxy
+				
+ 00000113  BA 00000062 R				mov edx, OFFSET t_lab_text
+ 00000118  03 D0					add edx, eax
+ 0000011A  B8 0000000F					mov eax, white + (black * 16)
+ 0000011F  E8 00000000 E				call SetTextColor
+ 00000124  E8 00000000 E				call WriteString
+				
+ 00000129  A2 000000B3 R				mov t_lab_curr_length, al
+						.endif
+					.endif
+				
+ 0000012E  A1 00000004 R		mov eax, curr_time
+ 00000133  A3 00000000 R		mov prev_time, eax
+ 00000138  C3				ret
+ 00000139			UpdateTimers ENDP
+				
+ 00000139			DrawTimers PROC
+					.if curr_timer == 0
+ 00000142  A1 00000008 R		mov eax, timer_class
+ 00000147  BB 00000050			mov ebx, T_CLASS_CHAR_LENGTH
+ 0000014C  F7 E3			mul ebx
+ 0000014E  BA 00000000			mov edx, 0
+ 00000153  BB 0000C350			mov ebx, T_CLASS_INITIAL
+ 00000158  F7 F3			div ebx
+					; Now eax holds the number of spaces that should be filled for the timer
+				
+ 0000015A  B6 18			mov dh, 24
+ 0000015C  B2 00			mov dl, 0
+ 0000015E  E8 00000000 E		call Gotoxy
+				
+ 00000163  B8 000000F0			mov eax, black + (white * 16)
+ 00000168  E8 00000000 E		call SetTextColor
+				
+ 0000016D  BA 0000000C R		mov edx, OFFSET t_class_text
+ 00000172  E8 00000000 E		call WriteString
+					.else
+ 00000179  A1 0000005E R		mov eax, timer_lab
+ 0000017E  BB 00000050			mov ebx, T_LAB_CHAR_LENGTH
+ 00000183  F7 E3			mul ebx
+ 00000185  BA 00000000			mov edx, 0
+ 0000018A  BB 0000C350			mov ebx, T_LAB_INITIAL
+ 0000018F  F7 F3			div ebx
+					; Now eax holds the number of spaces that should be filled for the timer
+				
+ 00000191  B6 18			mov dh, 24
+ 00000193  B2 00			mov dl, 0
+ 00000195  E8 00000000 E		call Gotoxy
+				
+ 0000019A  B8 000000F0			mov eax, black + (white * 16)
+ 0000019F  E8 00000000 E		call SetTextColor
+				
+ 000001A4  BA 00000062 R		mov edx, OFFSET t_lab_text
+ 000001A9  E8 00000000 E		call WriteString
+					.endif
+				
+ 000001AE  C3				ret
+ 000001AF			DrawTimers ENDP
+				
+ 000001AF			SwitchTimers PROC
+ 000001AF  C6 05 000000B4 R		mov curr_timer, 1
+	   01
+ 000001B6  E8 FFFFFE45			call StartTimers
+ 000001BB  C3				ret
+ 000001BC			SwitchTimers ENDP
+				
 				END
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    03/31/26 17:26:17
-Util.asm						     Symbols 2 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    03/31/26 18:05:37
+Timers.asm						     Symbols 2 - 1
 
 
 
@@ -164,8 +324,8 @@ Segments and Groups:
 
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
-_DATA  . . . . . . . . . . . . .	32 Bit	 0000001B Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 0000001F Para	  Public  'CODE'	
+_DATA  . . . . . . . . . . . . .	32 Bit	 000000B5 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 000001BC Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
@@ -179,16 +339,13 @@ CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 CreateOutputFile . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DrawTimers . . . . . . . . . . .	P Near	 00000139 _TEXT	Length= 00000076 Public STDCALL
 DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-FindArrString  . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000001F Public STDCALL
-  loop_start . . . . . . . . . .	L Near	 0000000C _TEXT	
-  loop_continue  . . . . . . . .	L Near	 00000018 _TEXT	
-  loop_end . . . . . . . . . . .	L Near	 0000001B _TEXT	
-  procedure_end  . . . . . . . .	L Near	 0000001D _TEXT	
+FindArrString  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -252,13 +409,16 @@ SetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 SetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ShowFPUStack . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Sleep  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+StartTimers  . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000003D Public STDCALL
 StrLength  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_compare  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_copy . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_length . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_trim . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_ucase  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SwitchTimers . . . . . . . . . .	P Near	 000001AF _TEXT	Length= 0000000D Public STDCALL
 SystemTimeToFileTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+UpdateTimers . . . . . . . . . .	P Near	 0000003D _TEXT	Length= 000000FC Public STDCALL
 WaitMsg  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteBinB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteBin . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -414,6 +574,14 @@ SetConsoleTitle  . . . . . . . .	Text   	 SetConsoleTitleA
 TAB  . . . . . . . . . . . . . .	Number	 00000009h   
 TRUE . . . . . . . . . . . . . .	Number	 00000001h   
 TRUNCATE_EXISTING  . . . . . . .	Number	 00000005h   
+T_CLASS_CHAR_LENGTH  . . . . . .	Number	 00000050h   
+T_CLASS_INITIAL  . . . . . . . .	Number	 0000C350h   
+T_CLASS_POS_X  . . . . . . . . .	Number	 00000000h   
+T_CLASS_POS_Y  . . . . . . . . .	Number	 00000018h   
+T_LAB_CHAR_LENGTH  . . . . . . .	Number	 00000050h   
+T_LAB_INITIAL  . . . . . . . . .	Number	 0000C350h   
+T_LAB_POS_X  . . . . . . . . . .	Number	 00000000h   
+T_LAB_POS_Y  . . . . . . . . . .	Number	 00000018h   
 VK_11  . . . . . . . . . . . . .	Number	 000000BDh   
 VK_12  . . . . . . . . . . . . .	Number	 000000BBh   
 VK_ADD . . . . . . . . . . . . .	Number	 0000006Bh   
@@ -498,7 +666,8 @@ WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
 black  . . . . . . . . . . . . .	Number	 00000000h   
 blue . . . . . . . . . . . . . .	Number	 00000001h   
 brown  . . . . . . . . . . . . .	Number	 00000006h   
-cmdSizeLimiter . . . . . . . . .	Byte	 00000000 _DATA	
+curr_timer . . . . . . . . . . .	Byte	 000000B4 _DATA	
+curr_time  . . . . . . . . . . .	DWord	 00000004 _DATA	
 cyan . . . . . . . . . . . . . .	Number	 00000003h   
 exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
 gray . . . . . . . . . . . . . .	Number	 00000008h   
@@ -510,7 +679,14 @@ lightGreen . . . . . . . . . . .	Number	 0000000Ah
 lightMagenta . . . . . . . . . .	Number	 0000000Dh   
 lightRed . . . . . . . . . . . .	Number	 0000000Ch   
 magenta  . . . . . . . . . . . .	Number	 00000005h   
+prev_time  . . . . . . . . . . .	DWord	 00000000 _DATA	
 red  . . . . . . . . . . . . . .	Number	 00000004h   
+t_class_curr_length  . . . . . .	Byte	 0000005D _DATA	
+t_class_text . . . . . . . . . .	Byte	 0000000C _DATA	
+t_lab_curr_length  . . . . . . .	Byte	 000000B3 _DATA	
+t_lab_text . . . . . . . . . . .	Byte	 00000062 _DATA	
+timer_class  . . . . . . . . . .	DWord	 00000008 _DATA	
+timer_lab  . . . . . . . . . . .	DWord	 0000005E _DATA	
 white  . . . . . . . . . . . . .	Number	 0000000Fh   
 wsprintf . . . . . . . . . . . .	Text   	 wsprintfA
 yellow . . . . . . . . . . . . .	Number	 0000000Eh   
