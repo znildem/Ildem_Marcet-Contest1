@@ -17,6 +17,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Other", "Other", "{BB1FE353
 	ProjectSection(SolutionItems) = preProject
 		AverageSilaghiClass\credits.txt = AverageSilaghiClass\credits.txt
 		AverageSilaghiClass\start_screen.txt = AverageSilaghiClass\start_screen.txt
+		AverageSilaghiClass\syllabus.txt = AverageSilaghiClass\syllabus.txt
 	EndProjectSection
 EndProject
 Global

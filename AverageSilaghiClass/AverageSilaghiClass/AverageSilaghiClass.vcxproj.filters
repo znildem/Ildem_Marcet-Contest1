@@ -12,7 +12,6 @@
     <MASM Include="DinoRender.asm" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="credits.txt" />
     <Text Include="start_screen.txt" />
     <Text Include="questions_easy.txt">
       <Filter>Texts</Filter>
@@ -20,6 +19,8 @@
     <Text Include="answers_easy.txt">
       <Filter>Texts</Filter>
     </Text>
+    <Text Include="syllabus.txt" />
+    <Text Include="credits.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Texts">

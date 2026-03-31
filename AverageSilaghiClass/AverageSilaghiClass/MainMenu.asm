@@ -13,11 +13,18 @@ gameTitle BYTE "An Average Class with Dr. Silaghi...", 0
 
 ; Menu options information
 menuOptions BYTE	"START", 0,
+					"SYLLABUS", 0,
 					"CREDITS", 0,
 					"EXIT", 0
-numOfMenuOptions BYTE 3
+numOfMenuOptions BYTE 4
 currMenuOption BYTE 0
 menuOptionsStartRow BYTE 2
+
+; Syllabus information
+syllabusTextFile BYTE "syllabus.txt", 0
+SYLLABUS_BUFFER_SIZE = 2000
+syllabusBuffer BYTE SYLLABUS_BUFFER_SIZE DUP(? )
+syllabusBytesRead DWORD ?
 
 ; Credits information
 creditsTextFile BYTE "credits.txt", 0
@@ -38,6 +45,9 @@ MainMenu PROC
 		call ReadChar
 		.if al == 0Dh
 			.if currMenuOption == 1
+				call Syllabus
+				jmp rewrite_menu
+			.elseif currMenuOption == 2
 				call Credits
 				jmp rewrite_menu
 			.endif
@@ -111,6 +121,22 @@ EnterPressed PROC
 	
 	ret
 EnterPressed ENDP
+
+Syllabus PROC
+	mov edx, OFFSET syllabusTextFile
+	call OpenInputFile
+	mov edx, OFFSET syllabusBuffer
+	mov ecx, SYLLABUS_BUFFER_SIZE
+	call ReadFromFile
+
+	call Clrscr
+	mov eax, white + (black * 16)
+	call SetTextColor
+	mov edx, OFFSET syllabusBuffer
+	call WriteString
+	call ReadChar
+	ret
+Syllabus ENDP
 
 Credits PROC
 	mov edx, OFFSET creditsTextFile
