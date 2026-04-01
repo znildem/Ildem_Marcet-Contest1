@@ -20,6 +20,15 @@ numOfMenuOptions BYTE 4
 currMenuOption BYTE 0
 menuOptionsStartRow BYTE 2
 
+; Difficulty options
+diffOptions BYTE	"SYLLABUS WEEK", 0,
+					"AVERAGE CLASS", 0,
+					"BIBLICALLY ACCURATE SILAGHI CLASS", 0
+numOfDiffOptions BYTE 3
+currDiffOption BYTE 0
+PUBLIC chosenDifficulty
+chosenDifficulty BYTE 0
+
 ; Syllabus information
 syllabusTextFile BYTE "syllabus.txt", 0
 SYLLABUS_BUFFER_SIZE = 2000
@@ -39,7 +48,7 @@ PUBLIC MainMenu
 ; OUT:
 ;	al: currMenuOption
 MainMenu PROC
-	rewrite_menu:
+	rewrite_menu :
 		call WriteMenu
 	main_loop_start :
 		call ReadChar
@@ -50,15 +59,19 @@ MainMenu PROC
 			.elseif currMenuOption == 2
 				call Credits
 				jmp rewrite_menu
+			.elseif currMenuOption == 0
+				call DifficultyMenu
+				mov chosenDifficulty, al
+				jmp procedure_end
 			.endif
 			jmp procedure_end
-		.elseif al == 0 ; Special Character
-			.if ah == 72 ; UP ARROW
+		.elseif al == 0
+			.if ah == 72; UP ARROW
 				.if currMenuOption > 0
 					dec currMenuOption
 					call WriteMenu
 				.endif
-			.elseif ah == 80 ; DOWN ARROW
+			.elseif ah == 80; DOWN ARROW
 				mov al, numOfMenuOptions
 				dec al
 				.if currMenuOption < al
@@ -69,7 +82,7 @@ MainMenu PROC
 		.endif
 
 		jmp main_loop_start
-	procedure_end:
+		procedure_end :
 	mov al, currMenuOption
 	ret
 MainMenu ENDP
@@ -153,5 +166,72 @@ Credits PROC
 	call ReadChar
 	ret
 Credits ENDP
+
+; OUT:
+		;   al: currDiffOption(0 = easy, 1 = med, 2 = hard)
+			DifficultyMenu PROC
+			mov currDiffOption, 0
+			rewrite_diff_menu :
+			call WriteDiffMenu
+			diff_loop_start :
+		call ReadChar
+			.if al == 0Dh
+			jmp diff_procedure_end
+			.elseif al == 0
+			.if ah == 72; UP ARROW
+			.if currDiffOption > 0
+			dec currDiffOption
+			call WriteDiffMenu
+			.endif
+			.elseif ah == 80; DOWN ARROW
+			mov al, numOfDiffOptions
+			dec al
+			.if currDiffOption < al
+			inc currDiffOption
+			call WriteDiffMenu
+			.endif
+			.endif
+			.endif
+			jmp diff_loop_start
+			diff_procedure_end :
+		mov al, currDiffOption
+			ret
+			DifficultyMenu ENDP
+
+			WriteDiffMenu PROC
+			mov eax, white + (black * 16)
+			call SetTextColor
+			call Clrscr
+			mov edx, OFFSET gameTitle
+			call WriteString
+
+			mov ecx, 0
+			diff_options_loop_start:
+		.if cl == currDiffOption
+			mov eax, black + (white * 16)
+			.else
+			mov eax, white + (black * 16)
+			.endif
+			call SetTextColor
+
+			mov dh, cl
+			add dh, menuOptionsStartRow
+			mov dl, 0
+			call Gotoxy
+
+			mov eax, ecx
+			mov esi, OFFSET diffOptions
+			call FindArrString
+
+			mov edx, OFFSET diffOptions
+			add edx, eax
+			call WriteString
+
+			inc ecx
+			cmp cl, numOfDiffOptions
+			jne diff_options_loop_start
+
+			ret
+			WriteDiffMenu ENDP
 
 END

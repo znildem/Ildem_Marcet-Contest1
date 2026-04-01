@@ -19,6 +19,7 @@ EXTERN currState:BYTE
 .code
 PUBLIC UpdateScreen
 PUBLIC ClearScreen
+PUBLIC DrawBase
 
 UpdateScreen PROC
 	.if currState == 0

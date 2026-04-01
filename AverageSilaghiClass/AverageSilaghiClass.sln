@@ -20,6 +20,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Other", "Other", "{BB1FE353
 		AverageSilaghiClass\syllabus.txt = AverageSilaghiClass\syllabus.txt
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Quiz", "Quiz", "{0A1EAE0D-6513-484A-B207-01D16F40C991}"
+	ProjectSection(SolutionItems) = preProject
+		AverageSilaghiClass\quiz_answers_easy.txt = AverageSilaghiClass\quiz_answers_easy.txt
+		AverageSilaghiClass\quiz_questions_easy.txt = AverageSilaghiClass\quiz_questions_easy.txt
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64

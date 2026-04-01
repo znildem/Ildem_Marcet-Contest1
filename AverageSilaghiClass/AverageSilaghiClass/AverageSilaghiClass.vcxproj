@@ -174,13 +174,13 @@
       <FileType>Document</FileType>
     </MASM>
     <MASM Include="MainMenu.asm" />
+    <MASM Include="Test.asm" />
     <MASM Include="Timers.asm" />
     <MASM Include="Util.asm" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="answers_easy.txt" />
+    <Text Include="quiz_answers_easy.txt" />
     <Text Include="credits.txt" />
-    <Text Include="questions_easy.txt" />
     <Text Include="start_screen.txt" />
     <Text Include="syllabus.txt" />
   </ItemGroup>
