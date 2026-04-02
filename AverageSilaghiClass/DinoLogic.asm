@@ -23,7 +23,6 @@ EXTERN cactusType:BYTE
 EXTERN cactusHeight:BYTE
 EXTERN cactusSpeed:SDWORD
 
-; NEW STATE VARIABLES
 dinoStartTime     DWORD ?
 dinoRoundDone     BYTE 0
 dinoRoundSuccess  BYTE 0
@@ -53,9 +52,7 @@ DinoInit PROC
     ret
 DinoInit ENDP
 
-; ---------------------------------------------------------
-; Tick logic — runs every frame
-; ---------------------------------------------------------
+; Tick logic â€” runs every frame
 DinoTick PROC
 
     ; If already finished, do nothing
@@ -70,9 +67,7 @@ DinoTick PROC
         jmp tick_end
     .endif
 
-    ; -------------------------
     ; INPUT: Jump
-    ; -------------------------
     invoke GetAsyncKeyState, VK_SPACE
     test ax, 8000h
     jnz try_jump
@@ -89,9 +84,7 @@ try_jump:
 
 skip_input:
 
-    ; -------------------------
     ; Physics
-    ; -------------------------
     mov eax, dinoY
     add eax, dinoVy
     mov dinoY, eax
@@ -108,9 +101,7 @@ skip_input:
     mov dinoVy, 0
 skip_ground:
 
-    ; -------------------------
     ; Move cactus
-    ; -------------------------
     mov eax, cactusX
     mov prevCactusX, eax
     sub eax, cactusSpeed
@@ -146,10 +137,7 @@ skip_speed:
     mov cactusHeight, al
 
 skip_reset:
-
-    ; -------------------------
     ; Collision detection
-    ; -------------------------
     movzx ebx, cactusType
     cmp ebx, 0
     je small_cactus
@@ -180,15 +168,13 @@ check_x:
     cmp eax, ebx
     jg check_success
 
-    ; COLLISION ? FAIL
+    ; COLLISION => FAIL
     mov dinoGameOver, 1
     mov dinoRoundDone, 1
     mov dinoRoundSuccess, 0
     jmp tick_end
 
-; -------------------------
 ; SUCCESS CHECK (10 seconds)
-; -------------------------
 check_success:
     call GetMseconds
     sub eax, dinoStartTime
@@ -202,9 +188,7 @@ tick_end:
     ret
 DinoTick ENDP
 
-; ---------------------------------------------------------
 ; Query functions for Game.asm
-; ---------------------------------------------------------
 DinoIsDone PROC
     mov al, dinoRoundDone
     ret
