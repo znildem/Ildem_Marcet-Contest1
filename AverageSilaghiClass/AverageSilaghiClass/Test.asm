@@ -24,18 +24,20 @@ labFileHard  BYTE "lab_questions_hard.txt", 0
 quizBuffer      BYTE QUESTION_BUF_SIZE DUP(?)
 quizBytesRead   DWORD ?
 
-; Parallel arrays: byte offset of each question's start, and its blank start/length
 questionOffsets     DWORD MAX_QUESTIONS DUP(?)
-questionBlankStart  BYTE  MAX_QUESTIONS DUP(?) ; col offset of '_' run within the line
-questionBlankLen    BYTE  MAX_QUESTIONS DUP(?) ; number of '_' chars
+questionBlankStart  BYTE  MAX_QUESTIONS DUP(?)
+questionBlankLen    BYTE  MAX_QUESTIONS DUP(?)
 numQuestions        BYTE 0
 
 PUBLIC currQuestion
 currQuestion        BYTE 0
 
-; Answers typed by the player (one slot per question, max 20 chars each)
 ANSWER_MAX_LEN = 20
 playerAnswers   BYTE MAX_QUESTIONS * ANSWER_MAX_LEN DUP(0)
+
+; Temporary storage for DrawQuiz blank rendering to avoid register conflicts
+dq_answer_char  BYTE 0
+dq_col_save     DWORD 0
 
 .code
 PUBLIC LoadQuiz
@@ -46,31 +48,21 @@ PUBLIC GetNumQuestions
 PUBLIC GetBlankLen
 PUBLIC GetAnswerBuf
 
-; Shared parse logic - call after OpenInputFile, eax = handle
 LoadAndParse PROC
-    ; Read into buffer
     mov edx, OFFSET quizBuffer
     mov ecx, QUESTION_BUF_SIZE - 1
     call ReadFromFile
     mov quizBytesRead, eax
     mov BYTE PTR [quizBuffer + eax], 0
 
-    ; Clear answer buffer
     push ecx
     push edi
     mov ecx, MAX_QUESTIONS * ANSWER_MAX_LEN
     mov edi, OFFSET playerAnswers
     xor eax, eax
     rep stosb
-    pop edi
-    pop ecx
-
-    ; Clear blank arrays so question 0 starts clean
-    push ecx
-    push edi
     mov ecx, MAX_QUESTIONS
     mov edi, OFFSET questionBlankStart
-    xor eax, eax
     rep stosb
     mov ecx, MAX_QUESTIONS
     mov edi, OFFSET questionBlankLen
@@ -78,29 +70,23 @@ LoadAndParse PROC
     pop edi
     pop ecx
 
-    ; Parse buffer in one pass
     mov numQuestions, 0
     mov esi, OFFSET quizBuffer
-    mov edx, 0              ; current byte offset
-    mov ecx, 0              ; current line start offset
+    mov edx, 0
+    mov ecx, 0
 
     parse_loop:
         mov bl, BYTE PTR [esi + edx]
         cmp bl, 0
         je parse_done
-
-        cmp bl, 0Ah         ; LF = end of line
+        cmp bl, 0Ah
         je parse_newline
-
-        cmp bl, '_'         ; found a blank character
+        cmp bl, '_'
         jne parse_next
 
-        ; Check if this is the first '_' on this line
         movzx ebx, numQuestions
         cmp BYTE PTR questionBlankLen[ebx], 0
         jne parse_count_blank
-
-        ; First '_' on this line - record its col offset
         mov eax, edx
         sub eax, ecx
         mov BYTE PTR questionBlankStart[ebx], al
@@ -113,16 +99,13 @@ LoadAndParse PROC
         parse_newline:
         movzx ebx, numQuestions
         mov questionOffsets[ebx * 4], ecx
-
         inc numQuestions
         mov al, numQuestions
         cmp al, MAX_QUESTIONS
         jge parse_done
-
         movzx ebx, numQuestions
         mov BYTE PTR questionBlankStart[ebx], 0
         mov BYTE PTR questionBlankLen[ebx], 0
-
         mov ecx, edx
         inc ecx
         inc edx
@@ -133,7 +116,6 @@ LoadAndParse PROC
         jmp parse_loop
 
     parse_done:
-    ; Handle last line if file doesn't end with newline
     cmp edx, ecx
     je last_line_skip
     movzx ebx, numQuestions
@@ -145,8 +127,6 @@ LoadAndParse PROC
     ret
 LoadAndParse ENDP
 
-; Loads quiz questions from a difficulty file
-; IN: eax = 0=easy, 1=med, 2=hard
 LoadQuiz PROC
     push eax
     push ebx
@@ -172,8 +152,6 @@ LoadQuiz PROC
     ret
 LoadQuiz ENDP
 
-; Loads lab questions from a difficulty file
-; IN: eax = 0=easy, 1=med, 2=hard
 LoadLab PROC
     push eax
     push ebx
@@ -200,6 +178,7 @@ LoadLab PROC
 LoadLab ENDP
 
 ; Draws all questions in the left panel
+; Uses dq_answer_char and dq_col_save as scratch to avoid register conflicts
 DrawQuiz PROC
     push eax
     push ebx
@@ -207,7 +186,7 @@ DrawQuiz PROC
     push edx
     push esi
 
-    mov ecx, 0                              ; question index
+    mov ecx, 0
     draw_loop:
         mov al, numQuestions
         cmp cl, al
@@ -219,8 +198,8 @@ DrawQuiz PROC
         call Gotoxy
 
         movzx ebx, cl
-        mov eax, questionOffsets[ebx * 4]  ; eax = buf offset of line start
-        mov edx, 0                          ; edx = col counter within line
+        mov eax, questionOffsets[ebx * 4]
+        mov edx, 0
 
         print_line_loop:
             mov esi, OFFSET quizBuffer
@@ -232,16 +211,15 @@ DrawQuiz PROC
             cmp bl, 0Ah
             je print_line_done
 
-            ; Is this col inside the blank run?
-            ; blank start and len are indexed by question (cl), not col (edx)
+            ; blank start col for this question
             movzx esi, cl
-            movzx esi, BYTE PTR questionBlankStart[esi]  ; esi = blank start col
+            movzx esi, BYTE PTR questionBlankStart[esi]
             cmp edx, esi
             jl print_normal_char
 
             movzx ebx, cl
-            movzx ebx, BYTE PTR questionBlankLen[ebx]    ; ebx = blank length
-            add ebx, esi                                 ; ebx = blank end col
+            movzx ebx, BYTE PTR questionBlankLen[ebx]
+            add ebx, esi
             cmp edx, ebx
             jge print_normal_char
 
@@ -258,33 +236,34 @@ DrawQuiz PROC
                 pop eax
             .endif
 
-            ; answer index = col - blank start
-            ; esi still holds blank start col here
+            ; save col counter so mul can't clobber it
+            mov dq_col_save, edx
+
+            ; answer index = col - blank start (esi = blank start col)
             mov ebx, edx
             sub ebx, esi                    ; ebx = index into answer buffer
 
             ; answer buffer = playerAnswers + (question * ANSWER_MAX_LEN)
-            push eax
-            movzx eax, cl                   ; eax = question index
-            push edx
-            mov edx, ANSWER_MAX_LEN
-            mul edx                         ; eax = question * ANSWER_MAX_LEN
-            pop edx
+            push eax                        ; save buf offset
+            movzx eax, cl
+            mov esi, ANSWER_MAX_LEN
+            mul esi                         ; eax = q*ANSWER_MAX_LEN, edx = 0 (small)
             add eax, OFFSET playerAnswers
-            mov al, BYTE PTR [eax + ebx]    ; al = answer char at index
+            mov al, BYTE PTR [eax + ebx]
             cmp al, 0
-            jne print_blank_char
+            jne store_answer_char
             mov al, '_'
-            print_blank_char:
-            ; al has the char to print, but we need to restore eax after
-            push eax
-            pop ebx                         ; bl = char to print
-            pop eax                         ; restore eax (buf offset)
-            mov al, bl
+            store_answer_char:
+            mov dq_answer_char, al
+            pop eax                         ; restore buf offset
+
+            ; restore col counter
+            mov edx, dq_col_save
+
+            mov al, dq_answer_char
             call WriteChar
             jmp print_advance
 
-            ; --- Normal character ---
             print_normal_char:
             push eax
             mov eax, white + (black * 16)
@@ -300,7 +279,6 @@ DrawQuiz PROC
             movzx ebx, cl
             mov eax, questionOffsets[ebx * 4]
             add eax, edx
-
             jmp print_line_loop
 
         print_line_done:
@@ -316,29 +294,22 @@ DrawQuiz PROC
     ret
 DrawQuiz ENDP
 
-; Returns currQuestion in al
 GetCurrQuestion PROC
     mov al, currQuestion
     ret
 GetCurrQuestion ENDP
 
-; Returns numQuestions in al
 GetNumQuestions PROC
     mov al, numQuestions
     ret
 GetNumQuestions ENDP
 
-; Returns the blank length of question N in al
-; IN: al = question index
 GetBlankLen PROC
     movzx eax, al
     mov al, BYTE PTR questionBlankLen[eax]
     ret
 GetBlankLen ENDP
 
-; Returns in edx the address of the answer buffer for question N
-; IN: al = question index
-; Does NOT clobber eax
 GetAnswerBuf PROC
     push eax
     push ebx

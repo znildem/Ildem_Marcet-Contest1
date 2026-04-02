@@ -34,6 +34,7 @@ curr_timer BYTE 0
 PUBLIC UpdateTimers
 PUBLIC StartTimers
 PUBLIC SwitchTimers
+PUBLIC DrawTimers
 
 StartTimers PROC
 	call GetMseconds

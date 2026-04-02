@@ -7,6 +7,7 @@ ClearScreen PROTO
 DrawBase PROTO
 StartTimers PROTO
 UpdateTimers PROTO
+DrawTimers PROTO
 SwitchTimers PROTO
 HandleInput PROTO
 
@@ -42,7 +43,6 @@ Game PROC
 
     call ClearScreen
     call UpdateScreen
-
     call StartTimers
 
     ; State 0: wait at start screen until enter
@@ -64,6 +64,7 @@ Game PROC
     getting_quiz_loop_start:
         call DinoTick
         call UpdateScreen
+        call DrawTimers
         call UpdateTimers
         mov eax, 50
         call Delay
@@ -90,6 +91,10 @@ Game PROC
         jnz flush_keys_2
     quiz_loop_start:
         call HandleInput
+        call UpdateTimers
+        call DrawTimers
+        mov eax, 50
+        call Delay
         cmp al, 0Dh
         jne quiz_loop_start
 
@@ -102,6 +107,7 @@ Game PROC
     turning_in_quiz_loop_start:
         call DinoTick
         call UpdateScreen
+        call DrawTimers
         call UpdateTimers
         mov eax, 50
         call Delay
@@ -122,6 +128,7 @@ Game PROC
     getting_lab_loop_start:
         call DinoTick
         call UpdateScreen
+        call DrawTimers
         call UpdateTimers
         mov eax, 50
         call Delay
@@ -148,6 +155,10 @@ Game PROC
         jnz flush_keys_5
     lab_loop_start:
         call HandleInput
+        call UpdateTimers
+        call DrawTimers
+        mov eax, 50
+        call Delay
         cmp al, 0Dh
         jne lab_loop_start
 
@@ -160,6 +171,7 @@ Game PROC
     turning_in_lab_loop_start:
         call DinoTick
         call UpdateScreen
+        call DrawTimers
         call UpdateTimers
         mov eax, 50
         call Delay
