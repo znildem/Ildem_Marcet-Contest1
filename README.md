@@ -31,3 +31,7 @@ Notes:
 - This project uses GetAsyncKeyState which was not fully covered in class.
 - We learned it from Microsoft documentation:
   https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
+
+- This project also uses timers for game loop timing and controlling movement speed.
+  Timer-based logic was not fully covered in class.
+  We learned how to implement timing using external resources and documentation.
