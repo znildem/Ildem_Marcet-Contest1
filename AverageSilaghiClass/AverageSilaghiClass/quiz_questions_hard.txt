@@ -1,0 +1,5 @@
+JMP modifies what 32-bit register? ___
+The termination .___ is used for include files.
+Hexadecimal __h is 19 in decimal.
+"MUL al" stores the result in __.
+For this class we use VS20__.

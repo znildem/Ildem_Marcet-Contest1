@@ -1,1 +1,5 @@
-What is 2+3? _
+What is 17-9? _
+RGB is Red, _____, and Blue.
+Florida Tech is abbreviated as ___.
+There are _ bits in a byte.
+What does ASM stand for? ________.

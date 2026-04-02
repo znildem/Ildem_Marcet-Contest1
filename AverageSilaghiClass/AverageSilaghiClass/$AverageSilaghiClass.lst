@@ -1,9 +1,9 @@
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/01/26 21:20:34
-DinoLogic.asm						     Page 1 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/01/26 22:22:06
+Input.asm						     Page 1 - 1
 
 
-				; Dino game logic only
-
+				; Handles player input for the quiz panel
+				
 				INCLUDE Irvine32.inc
 			      C ; Include file for Irvine32.lib             (Irvine32.inc)
 			      C 
@@ -22,176 +22,123 @@ DinoLogic.asm						     Page 1 - 1
 			      C .NOLIST
 			      C .LIST
 			      C 
-
-				GetAsyncKeyState PROTO, vKey:DWORD
-
- = 00000020			VK_SPACE  = 20h
- = 00000026			VK_UP     = 26h
-
+				
+				GetCurrQuestion PROTO
+				GetNumQuestions PROTO
+				GetBlankLen PROTO
+				GetAnswerBuf PROTO
+				DrawBase PROTO
+				DrawQuiz PROTO
+				
+				EXTERN currQuestion:BYTE
+				
  00000000			.data
-				PUBLIC DinoInit
-				PUBLIC DinoTick
-
-				EXTERN dinoY:SDWORD
-				EXTERN dinoVy:SDWORD
-				EXTERN cactusX:SDWORD
-				EXTERN dinoScore:DWORD
-				EXTERN dinoGameOver:BYTE
-				EXTERN cactusType:BYTE
-				EXTERN cactusHeight:BYTE
-				EXTERN cactusSpeed:SDWORD
-
+ 00000000 00			saved_key BYTE ?
+				
  00000000			.code
-
- 00000000			DinoInit PROC
- 00000000  C7 05 00000000 E		mov dinoY, 0
-	   00000000
- 0000000A  C7 05 00000000 E		mov dinoVy, 0
-	   00000000
- 00000014  C7 05 00000000 E		mov cactusX, 40
-	   00000028
- 0000001E  C7 05 00000000 E		mov dinoScore, 0
-	   00000000
- 00000028  C6 05 00000000 E		mov dinoGameOver, 0
+				PUBLIC HandleInput
+				
+				; Reads one key and updates the answer buffer or switches question
+				; OUT: al = key pressed (caller checks for Enter to exit loop)
+ 00000000			HandleInput PROC
+ 00000000  53			    push ebx
+ 00000001  51			    push ecx
+ 00000002  52			    push edx
+ 00000003  56			    push esi
+				
+ 00000004  E8 00000000 E	    call ReadChar
+ 00000009  A2 00000000 R	    mov saved_key, al
+				
+ 0000000E  3C 00		    cmp al, 0              ; special key first byte
+ 00000010  74 62		    je check_special
+				
+ 00000012  3C 08		    cmp al, 08h            ; backspace
+ 00000014  74 3A		    je do_backspace
+				
+ 00000016  3C 0D		    cmp al, 0Dh            ; enter - pass through to caller
+ 00000018  0F 84 00000097	    je handle_input_done
+				
+				    ; Regular character
+ 0000001E  E8 00000000 E	    call GetCurrQuestion
+ 00000023  E8 00000000 E	    call GetBlankLen        ; al = max length for curr question
+ 00000028  8A D8		    mov bl, al              ; bl = max length
+				
+ 0000002A  E8 00000000 E	    call GetCurrQuestion
+ 0000002F  E8 00000000 E	    call GetAnswerBuf       ; edx = answer buffer address
+				
+				    ; Find current length of answer
+ 00000034  B9 00000000		    mov ecx, 0
+ 00000039			    find_answer_end:
+ 00000039  80 3C 11 00		        cmp BYTE PTR [edx + ecx], 0
+ 0000003D  74 07		        je found_answer_end
+ 0000003F  41			        inc ecx
+ 00000040  3A CB		        cmp cl, bl
+ 00000042  7D 71		        jge handle_input_done   ; buffer full, ignore
+ 00000044  EB F3		        jmp find_answer_end
+ 00000046			    found_answer_end:
+				
+ 00000046  A0 00000000 R	    mov al, saved_key
+ 0000004B  88 04 11		    mov BYTE PTR [edx + ecx], al
+ 0000004E  EB 5B		    jmp redraw
+				
+ 00000050			    do_backspace:
+ 00000050  E8 00000000 E	    call GetCurrQuestion
+ 00000055  E8 00000000 E	    call GetAnswerBuf       ; edx = answer buffer address
+				
+ 0000005A  B9 00000000		    mov ecx, 0
+ 0000005F			    find_back_end:
+ 0000005F  80 3C 11 00		        cmp BYTE PTR [edx + ecx], 0
+ 00000063  74 03		        je found_back_end
+ 00000065  41			        inc ecx
+ 00000066  EB F7		        jmp find_back_end
+ 00000068			    found_back_end:
+				
+ 00000068  83 F9 00		    cmp ecx, 0
+ 0000006B  74 48		    je handle_input_done
+				
+ 0000006D  49			    dec ecx
+ 0000006E  C6 04 11 00		    mov BYTE PTR [edx + ecx], 0
+ 00000072  EB 37		    jmp redraw
+				
+ 00000074			    check_special:
+ 00000074  E8 00000000 E	    call ReadChar           ; get scan code into al
+ 00000079  3C 48		    cmp al, 72             ; up arrow
+ 0000007B  74 06		    je do_up
+ 0000007D  3C 50		    cmp al, 80             ; down arrow
+ 0000007F  74 13		    je do_down
+ 00000081  EB 32		    jmp handle_input_done
+				
+ 00000083			    do_up:
+ 00000083  80 3D 00000000 E	    cmp currQuestion, 0
 	   00
- 0000002F  C6 05 00000000 E		mov cactusType, 0
-	   00
- 00000036  C6 05 00000000 E		mov cactusHeight, 0
-	   00
- 0000003D  C7 05 00000000 E		mov cactusSpeed, 1
-	   00000001
- 00000047  C3				ret
- 00000048			DinoInit ENDP
-
- 00000048			DinoTick PROC
-					; If game over, press Space to reset
-					.if dinoGameOver == 1
-						invoke GetAsyncKeyState, VK_SPACE
- 00000058  66| A9 8000				test ax, 8000h
- 0000005C  0F 84 00000115			jz tick_end
-
- 00000062  E8 FFFFFF99				call DinoInit
- 00000067  E9 0000010B				jmp tick_end
-					.endif
-
-					; Jump on Space or Up Arrow only if on ground
-					invoke GetAsyncKeyState, VK_SPACE
- 00000073  66| A9 8000			test ax, 8000h
- 00000077  75 0D			jnz try_jump
-
-					invoke GetAsyncKeyState, VK_UP
- 00000080  66| A9 8000			test ax, 8000h
- 00000084  74 14			jz skip_input
-
- 00000086			try_jump:
- 00000086  A1 00000000 E		mov eax, dinoY
- 0000008B  83 F8 00			cmp eax, 0
- 0000008E  75 0A			jne skip_input
-
- 00000090  C7 05 00000000 E		mov dinoVy, 5
-	   00000005
-
- 0000009A			skip_input:
-
-					; dinoY += dinoVy
- 0000009A  A1 00000000 E		mov eax, dinoY
- 0000009F  03 05 00000000 E		add eax, dinoVy
- 000000A5  A3 00000000 E		mov dinoY, eax
-
-					; dinoVy -= 1
- 000000AA  A1 00000000 E		mov eax, dinoVy
- 000000AF  83 E8 01			sub eax, 1
- 000000B2  A3 00000000 E		mov dinoVy, eax
-
-					; clamp to ground
- 000000B7  A1 00000000 E		mov eax, dinoY
- 000000BC  83 F8 00			cmp eax, 0
- 000000BF  7D 14			jge skip_ground_clamp
-
- 000000C1  C7 05 00000000 E		mov dinoY, 0
-	   00000000
- 000000CB  C7 05 00000000 E		mov dinoVy, 0
-	   00000000
-
- 000000D5			skip_ground_clamp:
-
-					; move cactus left
- 000000D5  A1 00000000 E		mov eax, cactusX
- 000000DA  2B 05 00000000 E		sub eax, cactusSpeed
- 000000E0  A3 00000000 E		mov cactusX, eax
-
-					; reset cactus and increment score
- 000000E5  83 F8 00			cmp eax, 0
- 000000E8  7D 53			jge skip_cactus_reset
-
- 000000EA  C7 05 00000000 E		mov cactusX, 40
-	   00000028
- 000000F4  FF 05 00000000 E		inc dinoScore
-
-					; increase speed every 5 points
- 000000FA  A1 00000000 E		mov eax, dinoScore
- 000000FF  BB 0000000A			mov ebx, 10
- 00000104  BA 00000000			mov edx, 0
- 00000109  F7 F3			div ebx
- 0000010B  83 FA 00			cmp edx, 0
- 0000010E  75 0F			jne skip_speed_increase
-
- 00000110  83 3D 00000000 E		cmp cactusSpeed, 5
-	   05
- 00000117  7D 06			jge skip_speed_increase
- 00000119  FF 05 00000000 E		inc cactusSpeed
-
- 0000011F			skip_speed_increase:
-
-					; random type (0 or 1)
- 0000011F  B8 00000002			mov eax, 2
- 00000124  E8 00000000 E		call RandomRange
- 00000129  A2 00000000 E		mov cactusType, al
-
-					; random height (0,1,2)
- 0000012E  B8 00000003			mov eax, 3
- 00000133  E8 00000000 E		call RandomRange
- 00000138  A2 00000000 E		mov cactusHeight, al
-
- 0000013D			skip_cactus_reset:
-
-					; collision check
- 0000013D  A1 00000000 E		mov eax, cactusX
- 00000142  83 F8 08			cmp eax, 8
- 00000145  7C 30			jl tick_end
-
- 00000147  0F B6 1D			movzx ebx, cactusType
-	   00000000 E
- 0000014E  83 FB 00			cmp ebx, 0
- 00000151  74 07			je normal_width
-
-					; large cactus
- 00000153  83 F8 0B			cmp eax, 11
- 00000156  7F 1F			jg tick_end
- 00000158  EB 05			jmp check_height
-
- 0000015A			normal_width:
- 0000015A  83 F8 0A			cmp eax, 10
- 0000015D  7F 18			jg tick_end
-
- 0000015F			check_height:
- 0000015F  0F B6 1D			movzx ebx, cactusHeight
-	   00000000 E
- 00000166  43				inc ebx
- 00000167  A1 00000000 E		mov eax, dinoY
- 0000016C  3B C3			cmp eax, ebx
- 0000016E  7F 07			jg tick_end
-
- 00000170  C6 05 00000000 E		mov dinoGameOver, 1
-	   01
-
- 00000177			tick_end:
- 00000177  C3				ret
- 00000178			DinoTick ENDP
-
+ 0000008A  74 29		    je handle_input_done
+ 0000008C  FE 0D 00000000 E	    dec currQuestion
+ 00000092  EB 17		    jmp redraw
+				
+ 00000094			    do_down:
+ 00000094  E8 00000000 E	    call GetNumQuestions    ; al = numQuestions
+ 00000099  8A D8		    mov bl, al
+ 0000009B  FE CB		    dec bl
+ 0000009D  38 1D 00000000 E	    cmp currQuestion, bl
+ 000000A3  7D 10		    jge handle_input_done
+ 000000A5  FE 05 00000000 E	    inc currQuestion
+				
+ 000000AB			    redraw:
+ 000000AB  E8 00000000 E	    call DrawBase
+ 000000B0  E8 00000000 E	    call DrawQuiz
+				
+ 000000B5			    handle_input_done:
+ 000000B5  A0 00000000 R	    mov al, saved_key
+ 000000BA  5E			    pop esi
+ 000000BB  5A			    pop edx
+ 000000BC  59			    pop ecx
+ 000000BD  5B			    pop ebx
+ 000000BE  C3			    ret
+ 000000BF			HandleInput ENDP
+				
 				END
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/01/26 21:20:34
-DinoLogic.asm						     Symbols 2 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/01/26 22:22:06
+Input.asm						     Symbols 2 - 1
 
 
 
@@ -284,8 +231,8 @@ Segments and Groups:
 
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
-_DATA  . . . . . . . . . . . . .	32 Bit	 00000000 Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 00000178 Para	  Public  'CODE'	
+_DATA  . . . . . . . . . . . . .	32 Bit	 00000001 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 000000BF Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
@@ -299,16 +246,8 @@ CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 CreateOutputFile . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-DinoInit . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000048 Public STDCALL
-DinoTick . . . . . . . . . . . .	P Near	 00000048 _TEXT	Length= 00000130 Public STDCALL
-  try_jump . . . . . . . . . . .	L Near	 00000086 _TEXT	
-  skip_input . . . . . . . . . .	L Near	 0000009A _TEXT	
-  skip_ground_clamp  . . . . . .	L Near	 000000D5 _TEXT	
-  skip_speed_increase  . . . . .	L Near	 0000011F _TEXT	
-  skip_cactus_reset  . . . . . .	L Near	 0000013D _TEXT	
-  normal_width . . . . . . . . .	L Near	 0000015A _TEXT	
-  check_height . . . . . . . . .	L Near	 0000015F _TEXT	
-  tick_end . . . . . . . . . . .	L Near	 00000177 _TEXT	
+DrawBase . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DrawQuiz . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -316,13 +255,15 @@ FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetAsyncKeyState . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetAnswerBuf . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetBlankLen  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandTail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleCP . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleScreenBufferInfo . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetCurrQuestion  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetDateTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetFileTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetKeyState  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -330,6 +271,7 @@ GetLastError . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 GetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetMaxXY . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetMseconds  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetNumQuestions  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetNumberOfConsoleInputEvents  .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetProcessHeap . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetStdHandle . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -337,6 +279,17 @@ GetSystemTime  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 GetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetTickCount . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Gotoxy . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HandleInput  . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 000000BF Public STDCALL
+  find_answer_end  . . . . . . .	L Near	 00000039 _TEXT	
+  found_answer_end . . . . . . .	L Near	 00000046 _TEXT	
+  do_backspace . . . . . . . . .	L Near	 00000050 _TEXT	
+  find_back_end  . . . . . . . .	L Near	 0000005F _TEXT	
+  found_back_end . . . . . . . .	L Near	 00000068 _TEXT	
+  check_special  . . . . . . . .	L Near	 00000074 _TEXT	
+  do_up  . . . . . . . . . . . .	L Near	 00000083 _TEXT	
+  do_down  . . . . . . . . . . .	L Near	 00000094 _TEXT	
+  redraw . . . . . . . . . . . .	L Near	 000000AB _TEXT	
+  handle_input_done  . . . . . .	L Near	 000000B5 _TEXT	
 HeapAlloc  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 HeapCreate . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 HeapDestroy  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -624,15 +577,8 @@ WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
 black  . . . . . . . . . . . . .	Number	 00000000h   
 blue . . . . . . . . . . . . . .	Number	 00000001h   
 brown  . . . . . . . . . . . . .	Number	 00000006h   
-cactusHeight . . . . . . . . . .	Byte	 00000000 FLAT	External STDCALL
-cactusSpeed  . . . . . . . . . .	DWord	 00000000 FLAT	External STDCALL
-cactusType . . . . . . . . . . .	Byte	 00000000 FLAT	External STDCALL
-cactusX  . . . . . . . . . . . .	DWord	 00000000 FLAT	External STDCALL
+currQuestion . . . . . . . . . .	Byte	 00000000 FLAT	External STDCALL
 cyan . . . . . . . . . . . . . .	Number	 00000003h   
-dinoGameOver . . . . . . . . . .	Byte	 00000000 FLAT	External STDCALL
-dinoScore  . . . . . . . . . . .	DWord	 00000000 FLAT	External STDCALL
-dinoVy . . . . . . . . . . . . .	DWord	 00000000 FLAT	External STDCALL
-dinoY  . . . . . . . . . . . . .	DWord	 00000000 FLAT	External STDCALL
 exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
 gray . . . . . . . . . . . . . .	Number	 00000008h   
 green  . . . . . . . . . . . . .	Number	 00000002h   
@@ -644,6 +590,7 @@ lightMagenta . . . . . . . . . .	Number	 0000000Dh
 lightRed . . . . . . . . . . . .	Number	 0000000Ch   
 magenta  . . . . . . . . . . . .	Number	 00000005h   
 red  . . . . . . . . . . . . . .	Number	 00000004h   
+saved_key  . . . . . . . . . . .	Byte	 00000000 _DATA	
 white  . . . . . . . . . . . . .	Number	 0000000Fh   
 wsprintf . . . . . . . . . . . .	Text   	 wsprintfA
 yellow . . . . . . . . . . . . .	Number	 0000000Eh   

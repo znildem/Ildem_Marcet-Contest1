@@ -11,18 +11,11 @@
     <MASM Include="DinoLogic.asm" />
     <MASM Include="DinoRender.asm" />
     <MASM Include="Test.asm" />
+    <MASM Include="Input.asm" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="start_screen.txt" />
     <Text Include="syllabus.txt" />
     <Text Include="credits.txt" />
-    <Text Include="quiz_answers_easy.txt">
-      <Filter>Quiz</Filter>
-    </Text>
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="Quiz">
-      <UniqueIdentifier>{3f2d9b01-1900-4168-b223-2edad48fdfd9}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
 </Project>

@@ -1,0 +1,5 @@
+How many KB in a MB? ____
+The professor's name is ______ Silaghi.
+What position bit is the Carry flag? _
+F in hexadecimal is __ in decimal.
+A number plus __h is its ASCII character.

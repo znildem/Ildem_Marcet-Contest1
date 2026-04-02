@@ -170,6 +170,7 @@
     <MASM Include="DinoRender.asm" />
     <MASM Include="Game.asm" />
     <MASM Include="GameWindow.asm" />
+    <MASM Include="Input.asm" />
     <MASM Include="Main.asm">
       <FileType>Document</FileType>
     </MASM>
@@ -179,7 +180,6 @@
     <MASM Include="Util.asm" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="quiz_answers_easy.txt" />
     <Text Include="credits.txt" />
     <Text Include="start_screen.txt" />
     <Text Include="syllabus.txt" />

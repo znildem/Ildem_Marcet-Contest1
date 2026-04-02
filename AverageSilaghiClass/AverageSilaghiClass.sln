@@ -20,10 +20,20 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Other", "Other", "{BB1FE353
 		AverageSilaghiClass\syllabus.txt = AverageSilaghiClass\syllabus.txt
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Quiz", "Quiz", "{0A1EAE0D-6513-484A-B207-01D16F40C991}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{0A1EAE0D-6513-484A-B207-01D16F40C991}"
 	ProjectSection(SolutionItems) = preProject
+		AverageSilaghiClass\lab_answers_easy.txt = AverageSilaghiClass\lab_answers_easy.txt
+		AverageSilaghiClass\lab_answers_hard.txt = AverageSilaghiClass\lab_answers_hard.txt
+		AverageSilaghiClass\lab_answers_medium.txt = AverageSilaghiClass\lab_answers_medium.txt
+		AverageSilaghiClass\lab_questions_easy.txt = AverageSilaghiClass\lab_questions_easy.txt
+		AverageSilaghiClass\lab_questions_hard.txt = AverageSilaghiClass\lab_questions_hard.txt
+		AverageSilaghiClass\lab_questions_medium.txt = AverageSilaghiClass\lab_questions_medium.txt
 		AverageSilaghiClass\quiz_answers_easy.txt = AverageSilaghiClass\quiz_answers_easy.txt
+		AverageSilaghiClass\quiz_answers_hard.txt = AverageSilaghiClass\quiz_answers_hard.txt
+		AverageSilaghiClass\quiz_answers_medium.txt = AverageSilaghiClass\quiz_answers_medium.txt
 		AverageSilaghiClass\quiz_questions_easy.txt = AverageSilaghiClass\quiz_questions_easy.txt
+		AverageSilaghiClass\quiz_questions_hard.txt = AverageSilaghiClass\quiz_questions_hard.txt
+		AverageSilaghiClass\quiz_questions_medium.txt = AverageSilaghiClass\quiz_questions_medium.txt
 	EndProjectSection
 EndProject
 Global
