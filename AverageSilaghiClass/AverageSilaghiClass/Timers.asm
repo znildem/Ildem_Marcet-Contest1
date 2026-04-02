@@ -35,6 +35,7 @@ PUBLIC UpdateTimers
 PUBLIC StartTimers
 PUBLIC SwitchTimers
 PUBLIC DrawTimers
+PUBLIC GetPenalty
 
 StartTimers PROC
 	call GetMseconds
@@ -165,6 +166,24 @@ DrawTimers PROC
 
 	ret
 DrawTimers ENDP
+
+GetPenalty PROC
+	.if curr_timer == 0
+		mov eax, timer_class
+	.else
+		mov eax, timer_lab
+	.endif
+	cmp eax, 0
+	jl penalty_applies
+	mov eax, 0
+	penalty_applies:
+	neg eax
+	mov edx, 0
+	mov ebx, 1000
+	div ebx
+	done:
+	ret
+GetPenalty ENDP
 
 SwitchTimers PROC
 	mov curr_timer, 1

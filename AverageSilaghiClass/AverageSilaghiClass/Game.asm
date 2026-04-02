@@ -17,11 +17,17 @@ DinoTick PROTO
 LoadQuiz PROTO
 LoadLab PROTO
 DrawQuiz PROTO
+DrawLab PROTO
+
+CheckQuiz PROTO
+CheckLab PROTO
 
 GetAsyncKeyState PROTO, vKey:DWORD
 VK_RETURN = 0Dh
 
 EXTERN chosenDifficulty:BYTE
+EXTERN quizScore:DWORD
+EXTERN labScore:DWORD
 
 .data
 PUBLIC currState
@@ -36,8 +42,77 @@ currState BYTE ?
     ; currState=6: turning in lab
     ; currState=7: game end
 
+last_input BYTE 0
+
+scoreQuizLabel  BYTE "Score: ", 0
+scoreLabLabel   BYTE "Score: ", 0
+scoreSuffix50   BYTE "/50", 0
+scoreTotalLabel BYTE "Total Score: ", 0
+scoreSuffix100  BYTE "/100", 0
+
 .code
 PUBLIC Game
+
+DrawEndScreen PROC
+    push eax
+    push ebx
+    push edx
+
+    call ClearScreen
+    call DrawBase
+
+    ; Left panel: quiz questions
+    call DrawQuiz
+
+    ; Quiz score at bottom of left panel interior (row 22, col 1)
+    mov eax, white + (black * 16)
+    call SetTextColor
+    mov dh, 22
+    mov dl, 1
+    call Gotoxy
+    mov edx, OFFSET scoreQuizLabel
+    call WriteString
+    mov eax, quizScore
+    call WriteDec
+    mov edx, OFFSET scoreSuffix50
+    call WriteString
+
+    ; Right panel: lab questions
+    call DrawLab
+
+    ; Lab score at bottom of right panel interior (row 22, col 39)
+    mov eax, white + (black * 16)
+    call SetTextColor
+    mov dh, 22
+    mov dl, 39
+    call Gotoxy
+    mov edx, OFFSET scoreLabLabel
+    call WriteString
+    mov eax, labScore
+    call WriteDec
+    mov edx, OFFSET scoreSuffix50
+    call WriteString
+
+    ; Total score at row 24 (timer row)
+    mov dh, 24
+    mov dl, 0
+    call Gotoxy
+    mov eax, white + (black * 16)
+    call SetTextColor
+    mov edx, OFFSET scoreTotalLabel
+    call WriteString
+    mov eax, quizScore
+    add eax, labScore
+    call WriteDec
+    mov edx, OFFSET scoreSuffix100
+    call WriteString
+
+    pop edx
+    pop ebx
+    pop eax
+    ret
+DrawEndScreen ENDP
+
 Game PROC
     mov currState, 0
 
@@ -81,6 +156,7 @@ Game PROC
     call ClearScreen
     call DrawBase
     call DrawQuiz
+    call DrawTimers
     drain_buf_2:
         call ReadKey
         cmp ah, 0
@@ -91,15 +167,18 @@ Game PROC
         jnz flush_keys_2
     quiz_loop_start:
         call HandleInput
+        mov last_input, al
+		call DrawBase
+		call DrawQuiz
         call UpdateTimers
-        call DrawTimers
         mov eax, 50
         call Delay
-        cmp al, 0Dh
+        cmp last_input, 0Dh
         jne quiz_loop_start
 
         mov eax, 150
         call Delay
+        call CheckQuiz
 
     ; State 3: turning in quiz (dino)
     mov currState, 3
@@ -144,7 +223,8 @@ Game PROC
     mov currState, 5
     call ClearScreen
     call DrawBase
-    call DrawQuiz
+    call DrawLab
+    call DrawTimers
     drain_buf_5:
         call ReadKey
         cmp ah, 0
@@ -155,15 +235,18 @@ Game PROC
         jnz flush_keys_5
     lab_loop_start:
         call HandleInput
+        mov last_input, al
+		call DrawBase
+		Call DrawLab
         call UpdateTimers
-        call DrawTimers
         mov eax, 50
         call Delay
-        cmp al, 0Dh
+        cmp last_input, 0Dh
         jne lab_loop_start
 
         mov eax, 150
         call Delay
+        call CheckLab
 
     ; State 6: turning in lab (dino)
     mov currState, 6
@@ -185,8 +268,9 @@ Game PROC
 
     ; State 7: game end screen
     mov currState, 7
-    call UpdateScreen
-
+    call DrawEndScreen
+	call ReadChar
+	call ReadChar
     ret
 Game ENDP
 

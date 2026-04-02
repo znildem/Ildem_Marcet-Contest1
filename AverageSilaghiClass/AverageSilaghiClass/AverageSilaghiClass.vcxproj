@@ -175,6 +175,7 @@
       <FileType>Document</FileType>
     </MASM>
     <MASM Include="MainMenu.asm" />
+    <MASM Include="Score.asm" />
     <MASM Include="Test.asm" />
     <MASM Include="Timers.asm" />
     <MASM Include="Util.asm" />

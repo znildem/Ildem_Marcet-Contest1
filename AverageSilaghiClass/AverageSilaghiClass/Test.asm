@@ -1,18 +1,17 @@
-; Handles quiz question loading and display for the left panel
+; Handles quiz/lab question loading and display
 
 INCLUDE Irvine32.inc
 
-; Left panel interior bounds
-PANEL_LEFT   = 1
-PANEL_TOP    = 1
-PANEL_WIDTH  = 37
-PANEL_HEIGHT = 22
+QUIZ_PANEL_LEFT  = 1
+LAB_PANEL_LEFT   = 39
+PANEL_TOP        = 1
 
-; Max questions and line buffer
-MAX_QUESTIONS       = 20
-QUESTION_BUF_SIZE   = 2000
+MAX_QUESTIONS    = 20
+QUESTION_BUF_SIZE = 2000
+ANSWER_MAX_LEN   = 20
 
 .data
+
 quizFileEasy BYTE "quiz_questions_easy.txt", 0
 quizFileMed  BYTE "quiz_questions_med.txt", 0
 quizFileHard BYTE "quiz_questions_hard.txt", 0
@@ -21,112 +20,216 @@ labFileEasy  BYTE "lab_questions_easy.txt", 0
 labFileMed   BYTE "lab_questions_med.txt", 0
 labFileHard  BYTE "lab_questions_hard.txt", 0
 
-quizBuffer      BYTE QUESTION_BUF_SIZE DUP(?)
-quizBytesRead   DWORD ?
+; Quiz data
+quizBuffer       BYTE QUESTION_BUF_SIZE DUP(?)
+quizBytesRead    DWORD ?
+quizOffsets      DWORD MAX_QUESTIONS DUP(?)
+quizBlankStart   BYTE  MAX_QUESTIONS DUP(?)
+quizBlankLen     BYTE  MAX_QUESTIONS DUP(?)
+numQuizQuestions BYTE 0
+quizAnswers      BYTE MAX_QUESTIONS * ANSWER_MAX_LEN DUP(0)
 
-questionOffsets     DWORD MAX_QUESTIONS DUP(?)
-questionBlankStart  BYTE  MAX_QUESTIONS DUP(?)
-questionBlankLen    BYTE  MAX_QUESTIONS DUP(?)
-numQuestions        BYTE 0
+; Lab data
+labBuffer        BYTE QUESTION_BUF_SIZE DUP(?)
+labBytesRead     DWORD ?
+labOffsets       DWORD MAX_QUESTIONS DUP(?)
+labBlankStart    BYTE  MAX_QUESTIONS DUP(?)
+labBlankLen      BYTE  MAX_QUESTIONS DUP(?)
+numLabQuestions  BYTE 0
+labAnswers       BYTE MAX_QUESTIONS * ANSWER_MAX_LEN DUP(0)
+
+; Which set is active for input: 0=quiz 1=lab
+activeSet        BYTE 0
 
 PUBLIC currQuestion
-currQuestion        BYTE 0
+currQuestion     BYTE 0
 
-ANSWER_MAX_LEN = 20
-playerAnswers   BYTE MAX_QUESTIONS * ANSWER_MAX_LEN DUP(0)
-
-; Temporary storage for DrawQuiz blank rendering to avoid register conflicts
-dq_answer_char  BYTE 0
-dq_col_save     DWORD 0
+; Scratch vars to avoid mul clobbering edx in draw procs
+draw_col_save    DWORD 0
+draw_answer_char BYTE 0
 
 .code
 PUBLIC LoadQuiz
 PUBLIC LoadLab
 PUBLIC DrawQuiz
+PUBLIC DrawLab
 PUBLIC GetCurrQuestion
 PUBLIC GetNumQuestions
 PUBLIC GetBlankLen
 PUBLIC GetAnswerBuf
 
-LoadAndParse PROC
-    mov edx, OFFSET quizBuffer
-    mov ecx, QUESTION_BUF_SIZE - 1
-    call ReadFromFile
-    mov quizBytesRead, eax
-    mov BYTE PTR [quizBuffer + eax], 0
-
+; --- ParseQuiz: parses quizBuffer into quiz arrays ---
+ParseQuiz PROC
+    push eax
+    push ebx
     push ecx
+    push edx
+    push esi
     push edi
+
     mov ecx, MAX_QUESTIONS * ANSWER_MAX_LEN
-    mov edi, OFFSET playerAnswers
+    mov edi, OFFSET quizAnswers
     xor eax, eax
     rep stosb
     mov ecx, MAX_QUESTIONS
-    mov edi, OFFSET questionBlankStart
+    mov edi, OFFSET quizBlankStart
     rep stosb
     mov ecx, MAX_QUESTIONS
-    mov edi, OFFSET questionBlankLen
+    mov edi, OFFSET quizBlankLen
     rep stosb
-    pop edi
-    pop ecx
 
-    mov numQuestions, 0
+    mov numQuizQuestions, 0
     mov esi, OFFSET quizBuffer
     mov edx, 0
     mov ecx, 0
 
-    parse_loop:
+    qp_loop:
         mov bl, BYTE PTR [esi + edx]
         cmp bl, 0
-        je parse_done
+        je qp_done
         cmp bl, 0Ah
-        je parse_newline
+        je qp_newline
         cmp bl, '_'
-        jne parse_next
+        jne qp_next
 
-        movzx ebx, numQuestions
-        cmp BYTE PTR questionBlankLen[ebx], 0
-        jne parse_count_blank
+        movzx ebx, numQuizQuestions
+        cmp BYTE PTR quizBlankLen[ebx], 0
+        jne qp_count
         mov eax, edx
         sub eax, ecx
-        mov BYTE PTR questionBlankStart[ebx], al
+        mov BYTE PTR quizBlankStart[ebx], al
 
-        parse_count_blank:
-        movzx ebx, numQuestions
-        inc BYTE PTR questionBlankLen[ebx]
-        jmp parse_next
+        qp_count:
+        movzx ebx, numQuizQuestions
+        inc BYTE PTR quizBlankLen[ebx]
+        jmp qp_next
 
-        parse_newline:
-        movzx ebx, numQuestions
-        mov questionOffsets[ebx * 4], ecx
-        inc numQuestions
-        mov al, numQuestions
+        qp_newline:
+        movzx ebx, numQuizQuestions
+        mov quizOffsets[ebx * 4], ecx
+        inc numQuizQuestions
+        mov al, numQuizQuestions
         cmp al, MAX_QUESTIONS
-        jge parse_done
-        movzx ebx, numQuestions
-        mov BYTE PTR questionBlankStart[ebx], 0
-        mov BYTE PTR questionBlankLen[ebx], 0
+        jge qp_done
+        movzx ebx, numQuizQuestions
+        mov BYTE PTR quizBlankStart[ebx], 0
+        mov BYTE PTR quizBlankLen[ebx], 0
         mov ecx, edx
         inc ecx
         inc edx
-        jmp parse_loop
+        jmp qp_loop
 
-        parse_next:
+        qp_next:
         inc edx
-        jmp parse_loop
+        jmp qp_loop
 
-    parse_done:
+    qp_done:
     cmp edx, ecx
-    je last_line_skip
-    movzx ebx, numQuestions
-    mov questionOffsets[ebx * 4], ecx
-    inc numQuestions
-    last_line_skip:
+    je qp_skip
+    movzx ebx, numQuizQuestions
+    mov quizOffsets[ebx * 4], ecx
+    inc numQuizQuestions
+    qp_skip:
 
     mov currQuestion, 0
-    ret
-LoadAndParse ENDP
+    mov activeSet, 0
 
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    ret
+ParseQuiz ENDP
+
+; --- ParseLab: parses labBuffer into lab arrays ---
+ParseLab PROC
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push esi
+    push edi
+
+    mov ecx, MAX_QUESTIONS * ANSWER_MAX_LEN
+    mov edi, OFFSET labAnswers
+    xor eax, eax
+    rep stosb
+    mov ecx, MAX_QUESTIONS
+    mov edi, OFFSET labBlankStart
+    rep stosb
+    mov ecx, MAX_QUESTIONS
+    mov edi, OFFSET labBlankLen
+    rep stosb
+
+    mov numLabQuestions, 0
+    mov esi, OFFSET labBuffer
+    mov edx, 0
+    mov ecx, 0
+
+    lp_loop:
+        mov bl, BYTE PTR [esi + edx]
+        cmp bl, 0
+        je lp_done
+        cmp bl, 0Ah
+        je lp_newline
+        cmp bl, '_'
+        jne lp_next
+
+        movzx ebx, numLabQuestions
+        cmp BYTE PTR labBlankLen[ebx], 0
+        jne lp_count
+        mov eax, edx
+        sub eax, ecx
+        mov BYTE PTR labBlankStart[ebx], al
+
+        lp_count:
+        movzx ebx, numLabQuestions
+        inc BYTE PTR labBlankLen[ebx]
+        jmp lp_next
+
+        lp_newline:
+        movzx ebx, numLabQuestions
+        mov labOffsets[ebx * 4], ecx
+        inc numLabQuestions
+        mov al, numLabQuestions
+        cmp al, MAX_QUESTIONS
+        jge lp_done
+        movzx ebx, numLabQuestions
+        mov BYTE PTR labBlankStart[ebx], 0
+        mov BYTE PTR labBlankLen[ebx], 0
+        mov ecx, edx
+        inc ecx
+        inc edx
+        jmp lp_loop
+
+        lp_next:
+        inc edx
+        jmp lp_loop
+
+    lp_done:
+    cmp edx, ecx
+    je lp_skip
+    movzx ebx, numLabQuestions
+    mov labOffsets[ebx * 4], ecx
+    inc numLabQuestions
+    lp_skip:
+
+    mov currQuestion, 0
+    mov activeSet, 1
+
+    pop edi
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    ret
+ParseLab ENDP
+
+; Loads quiz questions
+; IN: eax = 0=easy, 1=med, 2=hard
 LoadQuiz PROC
     push eax
     push ebx
@@ -142,7 +245,14 @@ LoadQuiz PROC
         mov edx, OFFSET quizFileHard
     .endif
     call OpenInputFile
-    call LoadAndParse
+
+    mov edx, OFFSET quizBuffer
+    mov ecx, QUESTION_BUF_SIZE - 1
+    call ReadFromFile
+    mov quizBytesRead, eax
+    mov BYTE PTR [quizBuffer + eax], 0
+
+    call ParseQuiz
 
     pop esi
     pop edx
@@ -152,6 +262,8 @@ LoadQuiz PROC
     ret
 LoadQuiz ENDP
 
+; Loads lab questions
+; IN: eax = 0=easy, 1=med, 2=hard
 LoadLab PROC
     push eax
     push ebx
@@ -167,7 +279,14 @@ LoadLab PROC
         mov edx, OFFSET labFileHard
     .endif
     call OpenInputFile
-    call LoadAndParse
+
+    mov edx, OFFSET labBuffer
+    mov ecx, QUESTION_BUF_SIZE - 1
+    call ReadFromFile
+    mov labBytesRead, eax
+    mov BYTE PTR [labBuffer + eax], 0
+
+    call ParseLab
 
     pop esi
     pop edx
@@ -177,8 +296,7 @@ LoadLab PROC
     ret
 LoadLab ENDP
 
-; Draws all questions in the left panel
-; Uses dq_answer_char and dq_col_save as scratch to avoid register conflicts
+; Draws quiz questions on left panel
 DrawQuiz PROC
     push eax
     push ebx
@@ -187,43 +305,42 @@ DrawQuiz PROC
     push esi
 
     mov ecx, 0
-    draw_loop:
-        mov al, numQuestions
+    dqz_loop:
+        mov al, numQuizQuestions
         cmp cl, al
-        jge draw_done
+        jge dqz_done
 
         mov dh, cl
         add dh, PANEL_TOP
-        mov dl, PANEL_LEFT
+        mov dl, QUIZ_PANEL_LEFT
         call Gotoxy
 
         movzx ebx, cl
-        mov eax, questionOffsets[ebx * 4]
+        mov eax, quizOffsets[ebx * 4]
         mov edx, 0
 
-        print_line_loop:
+        dqz_line:
             mov esi, OFFSET quizBuffer
             mov bl, BYTE PTR [esi + eax]
             cmp bl, 0
-            je print_line_done
+            je dqz_line_done
             cmp bl, 0Dh
-            je print_line_done
+            je dqz_line_done
             cmp bl, 0Ah
-            je print_line_done
+            je dqz_line_done
 
-            ; blank start col for this question
             movzx esi, cl
-            movzx esi, BYTE PTR questionBlankStart[esi]
+            movzx esi, BYTE PTR quizBlankStart[esi]
             cmp edx, esi
-            jl print_normal_char
+            jl dqz_normal
 
             movzx ebx, cl
-            movzx ebx, BYTE PTR questionBlankLen[ebx]
+            movzx ebx, BYTE PTR quizBlankLen[ebx]
             add ebx, esi
             cmp edx, ebx
-            jge print_normal_char
+            jge dqz_normal
 
-            ; --- Inside blank ---
+            ; inside blank
             .if cl == currQuestion
                 push eax
                 mov eax, black + (white * 16)
@@ -236,56 +353,49 @@ DrawQuiz PROC
                 pop eax
             .endif
 
-            ; save col counter so mul can't clobber it
-            mov dq_col_save, edx
-
-            ; answer index = col - blank start (esi = blank start col)
+            mov draw_col_save, edx
             mov ebx, edx
-            sub ebx, esi                    ; ebx = index into answer buffer
+            sub ebx, esi                ; ebx = answer index
 
-            ; answer buffer = playerAnswers + (question * ANSWER_MAX_LEN)
-            push eax                        ; save buf offset
+            push eax
             movzx eax, cl
             mov esi, ANSWER_MAX_LEN
-            mul esi                         ; eax = q*ANSWER_MAX_LEN, edx = 0 (small)
-            add eax, OFFSET playerAnswers
+            mul esi                     ; eax = q*ANSWER_MAX_LEN, edx = 0
+            add eax, OFFSET quizAnswers
             mov al, BYTE PTR [eax + ebx]
             cmp al, 0
-            jne store_answer_char
+            jne dqz_got_char
             mov al, '_'
-            store_answer_char:
-            mov dq_answer_char, al
-            pop eax                         ; restore buf offset
+            dqz_got_char:
+            mov draw_answer_char, al
+            pop eax
+            mov edx, draw_col_save
 
-            ; restore col counter
-            mov edx, dq_col_save
-
-            mov al, dq_answer_char
+            mov al, draw_answer_char
             call WriteChar
-            jmp print_advance
+            jmp dqz_advance
 
-            print_normal_char:
+            dqz_normal:
             push eax
             mov eax, white + (black * 16)
             call SetTextColor
             pop eax
-
             mov esi, OFFSET quizBuffer
             mov al, BYTE PTR [esi + eax]
             call WriteChar
 
-            print_advance:
+            dqz_advance:
             inc edx
             movzx ebx, cl
-            mov eax, questionOffsets[ebx * 4]
+            mov eax, quizOffsets[ebx * 4]
             add eax, edx
-            jmp print_line_loop
+            jmp dqz_line
 
-        print_line_done:
+        dqz_line_done:
         inc ecx
-        jmp draw_loop
+        jmp dqz_loop
 
-    draw_done:
+    dqz_done:
     pop esi
     pop edx
     pop ecx
@@ -294,29 +404,162 @@ DrawQuiz PROC
     ret
 DrawQuiz ENDP
 
+; Draws lab questions on right panel
+DrawLab PROC
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push esi
+
+    mov ecx, 0
+    dlb_loop:
+        mov al, numLabQuestions
+        cmp cl, al
+        jge dlb_done
+
+        mov dh, cl
+        add dh, PANEL_TOP
+        mov dl, LAB_PANEL_LEFT
+        call Gotoxy
+
+        movzx ebx, cl
+        mov eax, labOffsets[ebx * 4]
+        mov edx, 0
+
+        dlb_line:
+            mov esi, OFFSET labBuffer
+            mov bl, BYTE PTR [esi + eax]
+            cmp bl, 0
+            je dlb_line_done
+            cmp bl, 0Dh
+            je dlb_line_done
+            cmp bl, 0Ah
+            je dlb_line_done
+
+            movzx esi, cl
+            movzx esi, BYTE PTR labBlankStart[esi]
+            cmp edx, esi
+            jl dlb_normal
+
+            movzx ebx, cl
+            movzx ebx, BYTE PTR labBlankLen[ebx]
+            add ebx, esi
+            cmp edx, ebx
+            jge dlb_normal
+
+            ; inside blank
+            .if cl == currQuestion
+                push eax
+                mov eax, black + (white * 16)
+                call SetTextColor
+                pop eax
+            .else
+                push eax
+                mov eax, white + (black * 16)
+                call SetTextColor
+                pop eax
+            .endif
+
+            mov draw_col_save, edx
+            mov ebx, edx
+            sub ebx, esi
+
+            push eax
+            movzx eax, cl
+            mov esi, ANSWER_MAX_LEN
+            mul esi
+            add eax, OFFSET labAnswers
+            mov al, BYTE PTR [eax + ebx]
+            cmp al, 0
+            jne dlb_got_char
+            mov al, '_'
+            dlb_got_char:
+            mov draw_answer_char, al
+            pop eax
+            mov edx, draw_col_save
+
+            mov al, draw_answer_char
+            call WriteChar
+            jmp dlb_advance
+
+            dlb_normal:
+            push eax
+            mov eax, white + (black * 16)
+            call SetTextColor
+            pop eax
+            mov esi, OFFSET labBuffer
+            mov al, BYTE PTR [esi + eax]
+            call WriteChar
+
+            dlb_advance:
+            inc edx
+            movzx ebx, cl
+            mov eax, labOffsets[ebx * 4]
+            add eax, edx
+            jmp dlb_line
+
+        dlb_line_done:
+        inc ecx
+        jmp dlb_loop
+
+    dlb_done:
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    ret
+DrawLab ENDP
+
+; Returns currQuestion in al
 GetCurrQuestion PROC
     mov al, currQuestion
     ret
 GetCurrQuestion ENDP
 
+; Returns numQuestions for active set in al
 GetNumQuestions PROC
-    mov al, numQuestions
+    cmp activeSet, 0
+    je gnq_quiz
+    mov al, numLabQuestions
+    ret
+    gnq_quiz:
+    mov al, numQuizQuestions
     ret
 GetNumQuestions ENDP
 
+; Returns blank length for question N in active set
+; IN: al = question index
 GetBlankLen PROC
     movzx eax, al
-    mov al, BYTE PTR questionBlankLen[eax]
+    cmp activeSet, 0
+    je gbl_quiz
+    mov al, BYTE PTR labBlankLen[eax]
+    ret
+    gbl_quiz:
+    mov al, BYTE PTR quizBlankLen[eax]
     ret
 GetBlankLen ENDP
 
+; Returns answer buffer address in edx for question N in active set
+; IN: al = question index
+; Does NOT clobber eax
 GetAnswerBuf PROC
     push eax
     push ebx
     movzx eax, al
     mov ebx, ANSWER_MAX_LEN
     mul ebx
-    add eax, OFFSET playerAnswers
+    cmp activeSet, 0
+    je gab_quiz
+    add eax, OFFSET labAnswers
+    mov edx, eax
+    pop ebx
+    pop eax
+    ret
+    gab_quiz:
+    add eax, OFFSET quizAnswers
     mov edx, eax
     pop ebx
     pop eax

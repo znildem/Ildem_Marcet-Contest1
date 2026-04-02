@@ -13,13 +13,14 @@ Game PROTO
 .code
 
 Main PROC
+	game_loop:
 	call MainMenu
 	.if al == 3 ; Exit option
 		jmp procedure_end
 	.elseif al == 0 ; Start option
 		call Game
 	.endif
-
+	jmp game_loop
 	procedure_end:
 	exit
 Main ENDP

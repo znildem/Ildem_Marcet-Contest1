@@ -105,8 +105,8 @@ HandleInput PROC
     inc currQuestion
 
     redraw:
-    call DrawBase
-    call DrawQuiz
+    ;call DrawBase
+    ;call DrawQuiz
     mov al, saved_key
     jmp handle_input_done
 

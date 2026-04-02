@@ -1,9 +1,9 @@
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/01/26 23:11:29
-Test.asm						     Page 1 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/02/26 00:29:43
+Main.asm						     Page 1 - 1
 
 
-				; Handles quiz question loading and display for the left panel
-				
+				; Main file to control execution
+
 				INCLUDE Irvine32.inc
 			      C ; Include file for Irvine32.lib             (Irvine32.inc)
 			      C 
@@ -22,382 +22,33 @@ Test.asm						     Page 1 - 1
 			      C .NOLIST
 			      C .LIST
 			      C 
-				
-				; Left panel interior bounds
- = 00000001			PANEL_LEFT   = 1
- = 00000001			PANEL_TOP    = 1
- = 00000025			PANEL_WIDTH  = 37
- = 00000016			PANEL_HEIGHT = 22
-				
-				; Max questions and line buffer
- = 00000014			MAX_QUESTIONS       = 20
- = 000007D0			QUESTION_BUF_SIZE   = 2000
-				
- 00000000			.data
- 00000000 71 75 69 7A 5F	quizFileEasy BYTE "quiz_questions_easy.txt", 0
-	   71 75 65 73 74
-	   69 6F 6E 73 5F
-	   65 61 73 79 2E
-	   74 78 74 00
- 00000018 71 75 69 7A 5F	quizFileMed  BYTE "quiz_questions_med.txt", 0
-	   71 75 65 73 74
-	   69 6F 6E 73 5F
-	   6D 65 64 2E 74
-	   78 74 00
- 0000002F 71 75 69 7A 5F	quizFileHard BYTE "quiz_questions_hard.txt", 0
-	   71 75 65 73 74
-	   69 6F 6E 73 5F
-	   68 61 72 64 2E
-	   74 78 74 00
-				
- 00000047 6C 61 62 5F 71	labFileEasy  BYTE "lab_questions_easy.txt", 0
-	   75 65 73 74 69
-	   6F 6E 73 5F 65
-	   61 73 79 2E 74
-	   78 74 00
- 0000005E 6C 61 62 5F 71	labFileMed   BYTE "lab_questions_med.txt", 0
-	   75 65 73 74 69
-	   6F 6E 73 5F 6D
-	   65 64 2E 74 78
-	   74 00
- 00000074 6C 61 62 5F 71	labFileHard  BYTE "lab_questions_hard.txt", 0
-	   75 65 73 74 69
-	   6F 6E 73 5F 68
-	   61 72 64 2E 74
-	   78 74 00
-				
- 0000008B  000007D0 [		quizBuffer      BYTE QUESTION_BUF_SIZE DUP(?)
-	    00
-	   ]
- 0000085B 00000000		quizBytesRead   DWORD ?
-				
- 0000085F  00000014 [		questionOffsets     DWORD MAX_QUESTIONS DUP(?)
-	    00000000
-	   ]
- 000008AF  00000014 [		questionBlankStart  BYTE  MAX_QUESTIONS DUP(?)
-	    00
-	   ]
- 000008C3  00000014 [		questionBlankLen    BYTE  MAX_QUESTIONS DUP(?)
-	    00
-	   ]
- 000008D7 00			numQuestions        BYTE 0
-				
-				PUBLIC currQuestion
- 000008D8 00			currQuestion        BYTE 0
-				
- = 00000014			ANSWER_MAX_LEN = 20
- 000008D9  00000190 [		playerAnswers   BYTE MAX_QUESTIONS * ANSWER_MAX_LEN DUP(0)
-	    00
-	   ]
-				
-				; Temporary storage for DrawQuiz blank rendering to avoid register conflicts
- 00000A69 00			dq_answer_char  BYTE 0
- 00000A6A 00000000		dq_col_save     DWORD 0
-				
- 00000000			.code
-				PUBLIC LoadQuiz
-				PUBLIC LoadLab
-				PUBLIC DrawQuiz
-				PUBLIC GetCurrQuestion
-				PUBLIC GetNumQuestions
-				PUBLIC GetBlankLen
-				PUBLIC GetAnswerBuf
-				
- 00000000			LoadAndParse PROC
- 00000000  BA 0000008B R	    mov edx, OFFSET quizBuffer
- 00000005  B9 000007CF		    mov ecx, QUESTION_BUF_SIZE - 1
- 0000000A  E8 00000000 E	    call ReadFromFile
- 0000000F  A3 0000085B R	    mov quizBytesRead, eax
- 00000014  C6 80 0000008B R	    mov BYTE PTR [quizBuffer + eax], 0
-	   00
-				
- 0000001B  51			    push ecx
- 0000001C  57			    push edi
- 0000001D  B9 00000190		    mov ecx, MAX_QUESTIONS * ANSWER_MAX_LEN
- 00000022  BF 000008D9 R	    mov edi, OFFSET playerAnswers
- 00000027  33 C0		    xor eax, eax
- 00000029  F3/ AA		    rep stosb
- 0000002B  B9 00000014		    mov ecx, MAX_QUESTIONS
- 00000030  BF 000008AF R	    mov edi, OFFSET questionBlankStart
- 00000035  F3/ AA		    rep stosb
- 00000037  B9 00000014		    mov ecx, MAX_QUESTIONS
- 0000003C  BF 000008C3 R	    mov edi, OFFSET questionBlankLen
- 00000041  F3/ AA		    rep stosb
- 00000043  5F			    pop edi
- 00000044  59			    pop ecx
-				
- 00000045  C6 05 000008D7 R	    mov numQuestions, 0
-	   00
- 0000004C  BE 0000008B R	    mov esi, OFFSET quizBuffer
- 00000051  BA 00000000		    mov edx, 0
- 00000056  B9 00000000		    mov ecx, 0
-				
- 0000005B			    parse_loop:
- 0000005B  8A 1C 32		        mov bl, BYTE PTR [esi + edx]
- 0000005E  80 FB 00		        cmp bl, 0
- 00000061  74 6E		        je parse_done
- 00000063  80 FB 0A		        cmp bl, 0Ah
- 00000066  74 2E		        je parse_newline
- 00000068  80 FB 5F		        cmp bl, '_'
- 0000006B  75 61		        jne parse_next
-				
- 0000006D  0F B6 1D		        movzx ebx, numQuestions
-	   000008D7 R
- 00000074  80 BB 000008C3 R	        cmp BYTE PTR questionBlankLen[ebx], 0
-	   00
- 0000007B  75 0A		        jne parse_count_blank
- 0000007D  8B C2		        mov eax, edx
- 0000007F  2B C1		        sub eax, ecx
- 00000081  88 83 000008AF R	        mov BYTE PTR questionBlankStart[ebx], al
-				
- 00000087			        parse_count_blank:
- 00000087  0F B6 1D		        movzx ebx, numQuestions
-	   000008D7 R
- 0000008E  FE 83 000008C3 R	        inc BYTE PTR questionBlankLen[ebx]
- 00000094  EB 38		        jmp parse_next
-				
- 00000096			        parse_newline:
- 00000096  0F B6 1D		        movzx ebx, numQuestions
-	   000008D7 R
- 0000009D  89 0C 9D		        mov questionOffsets[ebx * 4], ecx
-	   0000085F R
- 000000A4  FE 05 000008D7 R	        inc numQuestions
- 000000AA  A0 000008D7 R	        mov al, numQuestions
- 000000AF  3C 14		        cmp al, MAX_QUESTIONS
- 000000B1  7D 1E		        jge parse_done
- 000000B3  0F B6 1D		        movzx ebx, numQuestions
-	   000008D7 R
- 000000BA  C6 83 000008AF R	        mov BYTE PTR questionBlankStart[ebx], 0
-	   00
- 000000C1  C6 83 000008C3 R	        mov BYTE PTR questionBlankLen[ebx], 0
-	   00
- 000000C8  8B CA		        mov ecx, edx
- 000000CA  41			        inc ecx
- 000000CB  42			        inc edx
- 000000CC  EB 8D		        jmp parse_loop
-				
- 000000CE			        parse_next:
- 000000CE  42			        inc edx
- 000000CF  EB 8A		        jmp parse_loop
-				
- 000000D1			    parse_done:
- 000000D1  3B D1		    cmp edx, ecx
- 000000D3  74 14		    je last_line_skip
- 000000D5  0F B6 1D		    movzx ebx, numQuestions
-	   000008D7 R
- 000000DC  89 0C 9D		    mov questionOffsets[ebx * 4], ecx
-	   0000085F R
- 000000E3  FE 05 000008D7 R	    inc numQuestions
- 000000E9			    last_line_skip:
-				
- 000000E9  C6 05 000008D8 R	    mov currQuestion, 0
-	   00
- 000000F0  C3			    ret
- 000000F1			LoadAndParse ENDP
-				
- 000000F1			LoadQuiz PROC
- 000000F1  50			    push eax
- 000000F2  53			    push ebx
- 000000F3  51			    push ecx
- 000000F4  52			    push edx
- 000000F5  56			    push esi
-				
-				    .if eax == 0
- 000000FA  BA 00000000 R	        mov edx, OFFSET quizFileEasy
-				    .elseif eax == 1
- 00000106  BA 00000018 R	        mov edx, OFFSET quizFileMed
-				    .else
- 0000010D  BA 0000002F R	        mov edx, OFFSET quizFileHard
-				    .endif
- 00000112  E8 00000000 E	    call OpenInputFile
- 00000117  E8 FFFFFEE4		    call LoadAndParse
-				
- 0000011C  5E			    pop esi
- 0000011D  5A			    pop edx
- 0000011E  59			    pop ecx
- 0000011F  5B			    pop ebx
- 00000120  58			    pop eax
- 00000121  C3			    ret
- 00000122			LoadQuiz ENDP
-				
- 00000122			LoadLab PROC
- 00000122  50			    push eax
- 00000123  53			    push ebx
- 00000124  51			    push ecx
- 00000125  52			    push edx
- 00000126  56			    push esi
-				
-				    .if eax == 0
- 0000012B  BA 00000047 R	        mov edx, OFFSET labFileEasy
-				    .elseif eax == 1
- 00000137  BA 0000005E R	        mov edx, OFFSET labFileMed
-				    .else
- 0000013E  BA 00000074 R	        mov edx, OFFSET labFileHard
-				    .endif
- 00000143  E8 00000000 E	    call OpenInputFile
- 00000148  E8 FFFFFEB3		    call LoadAndParse
-				
- 0000014D  5E			    pop esi
- 0000014E  5A			    pop edx
- 0000014F  59			    pop ecx
- 00000150  5B			    pop ebx
- 00000151  58			    pop eax
- 00000152  C3			    ret
- 00000153			LoadLab ENDP
-				
-				; Draws all questions in the left panel
-				; Uses dq_answer_char and dq_col_save as scratch to avoid register conflicts
- 00000153			DrawQuiz PROC
- 00000153  50			    push eax
- 00000154  53			    push ebx
- 00000155  51			    push ecx
- 00000156  52			    push edx
- 00000157  56			    push esi
-				
- 00000158  B9 00000000		    mov ecx, 0
- 0000015D			    draw_loop:
- 0000015D  A0 000008D7 R	        mov al, numQuestions
- 00000162  3A C8		        cmp cl, al
- 00000164  0F 8D 000000EA	        jge draw_done
-				
- 0000016A  8A F1		        mov dh, cl
- 0000016C  80 C6 01		        add dh, PANEL_TOP
- 0000016F  B2 01		        mov dl, PANEL_LEFT
- 00000171  E8 00000000 E	        call Gotoxy
 
- 00000176  0F B6 D9		        movzx ebx, cl
- 00000179  8B 04 9D		        mov eax, questionOffsets[ebx * 4]
-	   0000085F R
- 00000180  BA 00000000		        mov edx, 0
-				
- 00000185			        print_line_loop:
- 00000185  BE 0000008B R	            mov esi, OFFSET quizBuffer
- 0000018A  8A 1C 30		            mov bl, BYTE PTR [esi + eax]
- 0000018D  80 FB 00		            cmp bl, 0
- 00000190  0F 84 000000B8	            je print_line_done
- 00000196  80 FB 0D		            cmp bl, 0Dh
- 00000199  0F 84 000000AF	            je print_line_done
- 0000019F  80 FB 0A		            cmp bl, 0Ah
- 000001A2  0F 84 000000A6	            je print_line_done
-				
-				            ; blank start col for this question
- 000001A8  0F B6 F1		            movzx esi, cl
- 000001AB  0F B6 B6		            movzx esi, BYTE PTR questionBlankStart[esi]
-	   000008AF R
- 000001B2  3B D6		            cmp edx, esi
- 000001B4  7C 6D		            jl print_normal_char
-				
- 000001B6  0F B6 D9		            movzx ebx, cl
- 000001B9  0F B6 9B		            movzx ebx, BYTE PTR questionBlankLen[ebx]
-	   000008C3 R
- 000001C0  03 DE		            add ebx, esi
- 000001C2  3B D3		            cmp edx, ebx
- 000001C4  7D 5D		            jge print_normal_char
-				
-				            ; --- Inside blank ---
-				            .if cl == currQuestion
- 000001CE  50			                push eax
- 000001CF  B8 000000F0		                mov eax, black + (white * 16)
- 000001D4  E8 00000000 E	                call SetTextColor
- 000001D9  58			                pop eax
-				            .else
- 000001DC  50			                push eax
- 000001DD  B8 0000000F		                mov eax, white + (black * 16)
- 000001E2  E8 00000000 E	                call SetTextColor
- 000001E7  58			                pop eax
-				            .endif
-				
-				            ; save col counter so mul can't clobber it
- 000001E8  89 15 00000A6A R	            mov dq_col_save, edx
-				
-				            ; answer index = col - blank start (esi = blank start col)
- 000001EE  8B DA		            mov ebx, edx
- 000001F0  2B DE		            sub ebx, esi                    ; ebx = index into answer buffer
-				
-				            ; answer buffer = playerAnswers + (question * ANSWER_MAX_LEN)
- 000001F2  50			            push eax                        ; save buf offset
- 000001F3  0F B6 C1		            movzx eax, cl
- 000001F6  BE 00000014		            mov esi, ANSWER_MAX_LEN
- 000001FB  F7 E6		            mul esi                         ; eax = q*ANSWER_MAX_LEN, edx = 0 (small)
- 000001FD  05 000008D9 R	            add eax, OFFSET playerAnswers
- 00000202  8A 04 03		            mov al, BYTE PTR [eax + ebx]
- 00000205  3C 00		            cmp al, 0
- 00000207  75 02		            jne store_answer_char
- 00000209  B0 5F		            mov al, '_'
- 0000020B			            store_answer_char:
- 0000020B  A2 00000A69 R	            mov dq_answer_char, al
- 00000210  58			            pop eax                         ; restore buf offset
-				
-				            ; restore col counter
- 00000211  8B 15 00000A6A R	            mov edx, dq_col_save
-				
- 00000217  A0 00000A69 R	            mov al, dq_answer_char
- 0000021C  E8 00000000 E	            call WriteChar
- 00000221  EB 19		            jmp print_advance
-				
- 00000223			            print_normal_char:
- 00000223  50			            push eax
- 00000224  B8 0000000F		            mov eax, white + (black * 16)
- 00000229  E8 00000000 E	            call SetTextColor
- 0000022E  58			            pop eax
-				
- 0000022F  BE 0000008B R	            mov esi, OFFSET quizBuffer
- 00000234  8A 04 30		            mov al, BYTE PTR [esi + eax]
- 00000237  E8 00000000 E	            call WriteChar
-				
- 0000023C			            print_advance:
- 0000023C  42			            inc edx
- 0000023D  0F B6 D9		            movzx ebx, cl
- 00000240  8B 04 9D		            mov eax, questionOffsets[ebx * 4]
-	   0000085F R
- 00000247  03 C2		            add eax, edx
- 00000249  E9 FFFFFF37		            jmp print_line_loop
-				
- 0000024E			        print_line_done:
- 0000024E  41			        inc ecx
- 0000024F  E9 FFFFFF09		        jmp draw_loop
-				
- 00000254			    draw_done:
- 00000254  5E			    pop esi
- 00000255  5A			    pop edx
- 00000256  59			    pop ecx
- 00000257  5B			    pop ebx
- 00000258  58			    pop eax
- 00000259  C3			    ret
- 0000025A			DrawQuiz ENDP
-				
- 0000025A			GetCurrQuestion PROC
- 0000025A  A0 000008D8 R	    mov al, currQuestion
- 0000025F  C3			    ret
- 00000260			GetCurrQuestion ENDP
-				
- 00000260			GetNumQuestions PROC
- 00000260  A0 000008D7 R	    mov al, numQuestions
- 00000265  C3			    ret
- 00000266			GetNumQuestions ENDP
-				
- 00000266			GetBlankLen PROC
- 00000266  0F B6 C0		    movzx eax, al
- 00000269  8A 80 000008C3 R	    mov al, BYTE PTR questionBlankLen[eax]
- 0000026F  C3			    ret
- 00000270			GetBlankLen ENDP
-				
- 00000270			GetAnswerBuf PROC
- 00000270  50			    push eax
- 00000271  53			    push ebx
- 00000272  0F B6 C0		    movzx eax, al
- 00000275  BB 00000014		    mov ebx, ANSWER_MAX_LEN
- 0000027A  F7 E3		    mul ebx
- 0000027C  05 000008D9 R	    add eax, OFFSET playerAnswers
- 00000281  8B D0		    mov edx, eax
- 00000283  5B			    pop ebx
- 00000284  58			    pop eax
- 00000285  C3			    ret
- 00000286			GetAnswerBuf ENDP
-				
-				END
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/01/26 23:11:29
-Test.asm						     Symbols 2 - 1
+				MainMenu PROTO; runs the menu
+				StartTimers PROTO
+				UpdateTimers PROTO
+				DrawTimer PROTO
+				SetConsoleSize PROTO
+				UpdateScreen PROTO
+				Game PROTO
+
+ 00000000			.code
+
+ 00000000			Main PROC
+ 00000000				game_loop:
+ 00000000  E8 00000000 E		call MainMenu
+					.if al == 3 ; Exit option
+ 00000009  EB 0D				jmp procedure_end
+					.elseif al == 0 ; Start option
+ 00000011  E8 00000000 E			call Game
+					.endif
+ 00000016  EB E8			jmp game_loop
+ 00000018				procedure_end:
+					exit
+ 0000001F			Main ENDP
+
+				END Main
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/02/26 00:29:43
+Main.asm						     Symbols 2 - 1
 
 
 
@@ -490,8 +141,8 @@ Segments and Groups:
 
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
-_DATA  . . . . . . . . . . . . .	32 Bit	 00000A6E Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 00000286 Para	  Public  'CODE'	
+_DATA  . . . . . . . . . . . . .	32 Bit	 00000000 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 0000001F Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
@@ -505,14 +156,7 @@ CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 CreateOutputFile . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-DrawQuiz . . . . . . . . . . . .	P Near	 00000153 _TEXT	Length= 00000107 Public STDCALL
-  draw_loop  . . . . . . . . . .	L Near	 0000015D _TEXT	
-  print_line_loop  . . . . . . .	L Near	 00000185 _TEXT	
-  store_answer_char  . . . . . .	L Near	 0000020B _TEXT	
-  print_normal_char  . . . . . .	L Near	 00000223 _TEXT	
-  print_advance  . . . . . . . .	L Near	 0000023C _TEXT	
-  print_line_done  . . . . . . .	L Near	 0000024E _TEXT	
-  draw_done  . . . . . . . . . .	L Near	 00000254 _TEXT	
+DrawTimer  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -520,15 +164,13 @@ FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetAnswerBuf . . . . . . . . . .	P Near	 00000270 _TEXT	Length= 00000016 Public STDCALL
-GetBlankLen  . . . . . . . . . .	P Near	 00000266 _TEXT	Length= 0000000A Public STDCALL
+Game . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandTail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleCP . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleScreenBufferInfo . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetCurrQuestion  . . . . . . . .	P Near	 0000025A _TEXT	Length= 00000006 Public STDCALL
 GetDateTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetFileTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetKeyState  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -536,7 +178,6 @@ GetLastError . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 GetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetMaxXY . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetMseconds  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetNumQuestions  . . . . . . . .	P Near	 00000260 _TEXT	Length= 00000006 Public STDCALL
 GetNumberOfConsoleInputEvents  .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetProcessHeap . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetStdHandle . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -550,16 +191,11 @@ HeapDestroy  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 HeapFree . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 HeapSize . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 IsDigit  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-LoadAndParse . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 000000F1 Public STDCALL
-  parse_loop . . . . . . . . . .	L Near	 0000005B _TEXT	
-  parse_count_blank  . . . . . .	L Near	 00000087 _TEXT	
-  parse_newline  . . . . . . . .	L Near	 00000096 _TEXT	
-  parse_next . . . . . . . . . .	L Near	 000000CE _TEXT	
-  parse_done . . . . . . . . . .	L Near	 000000D1 _TEXT	
-  last_line_skip . . . . . . . .	L Near	 000000E9 _TEXT	
-LoadLab  . . . . . . . . . . . .	P Near	 00000122 _TEXT	Length= 00000031 Public STDCALL
-LoadQuiz . . . . . . . . . . . .	P Near	 000000F1 _TEXT	Length= 00000031 Public STDCALL
 LocalFree  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+MainMenu . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Main . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000001F Public STDCALL
+  game_loop  . . . . . . . . . .	L Near	 00000000 _TEXT	
+  procedure_end  . . . . . . . .	L Near	 00000018 _TEXT	
 MessageBoxA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MsgBoxAsk  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MsgBox . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -586,6 +222,7 @@ SetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 SetConsoleCursorPosition . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SetConsoleScreenBufferSize . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleSize . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SetConsoleTextAttribute  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SetConsoleTitleA . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SetConsoleWindowInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -594,6 +231,7 @@ SetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 SetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ShowFPUStack . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Sleep  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+StartTimers  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 StrLength  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_compare  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_copy . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -601,6 +239,8 @@ Str_length . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 Str_trim . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_ucase  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SystemTimeToFileTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+UpdateScreen . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+UpdateTimers . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WaitMsg  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteBinB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteBin . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -638,7 +278,6 @@ Symbols:
 @fardata . . . . . . . . . . . .	Text   	 FLAT
 @stack . . . . . . . . . . . . .	Text   	 FLAT
 ALT_MASK . . . . . . . . . . . .	Number	 00000003h   
-ANSWER_MAX_LEN . . . . . . . . .	Number	 00000014h   
 CAPSLOCK_ON  . . . . . . . . . .	Number	 00000080h   
 CREATE_ALWAYS  . . . . . . . . .	Number	 00000002h   
 CREATE_NEW . . . . . . . . . . .	Number	 00000001h   
@@ -711,7 +350,6 @@ KEY_EVENT  . . . . . . . . . . .	Number	 00000001h
 KEY_MASKS  . . . . . . . . . . .	Number	 0000001Fh   
 LEFT_ALT_PRESSED . . . . . . . .	Number	 00000002h   
 LEFT_CTRL_PRESSED  . . . . . . .	Number	 00000008h   
-MAX_QUESTIONS  . . . . . . . . .	Number	 00000014h   
 MB_ABORTRETRYIGNORE  . . . . . .	Number	 00000002h   
 MB_APPLMODAL . . . . . . . . . .	Number	 00000000h   
 MB_CANCELTRYCONTINUE . . . . . .	Number	 00000006h   
@@ -743,12 +381,7 @@ NULL . . . . . . . . . . . . . .	Number	 00000000h
 NUMLOCK_ON . . . . . . . . . . .	Number	 00000020h   
 OPEN_ALWAYS  . . . . . . . . . .	Number	 00000004h   
 OPEN_EXISTING  . . . . . . . . .	Number	 00000003h   
-PANEL_HEIGHT . . . . . . . . . .	Number	 00000016h   
-PANEL_LEFT . . . . . . . . . . .	Number	 00000001h   
-PANEL_TOP  . . . . . . . . . . .	Number	 00000001h   
-PANEL_WIDTH  . . . . . . . . . .	Number	 00000025h   
 PeekConsoleInput . . . . . . . .	Text   	 PeekConsoleInputA
-QUESTION_BUF_SIZE  . . . . . . .	Number	 000007D0h   
 RIGHT_ALT_PRESSED  . . . . . . .	Number	 00000001h   
 RIGHT_CTRL_PRESSED . . . . . . .	Number	 00000004h   
 ReadConsoleInput . . . . . . . .	Text   	 ReadConsoleInputA
@@ -847,16 +480,10 @@ WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
 black  . . . . . . . . . . . . .	Number	 00000000h   
 blue . . . . . . . . . . . . . .	Number	 00000001h   
 brown  . . . . . . . . . . . . .	Number	 00000006h   
-currQuestion . . . . . . . . . .	Byte	 000008D8 _DATA	Public STDCALL
 cyan . . . . . . . . . . . . . .	Number	 00000003h   
-dq_answer_char . . . . . . . . .	Byte	 00000A69 _DATA	
-dq_col_save  . . . . . . . . . .	DWord	 00000A6A _DATA	
 exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
 gray . . . . . . . . . . . . . .	Number	 00000008h   
 green  . . . . . . . . . . . . .	Number	 00000002h   
-labFileEasy  . . . . . . . . . .	Byte	 00000047 _DATA	
-labFileHard  . . . . . . . . . .	Byte	 00000074 _DATA	
-labFileMed . . . . . . . . . . .	Byte	 0000005E _DATA	
 lightBlue  . . . . . . . . . . .	Number	 00000009h   
 lightCyan  . . . . . . . . . . .	Number	 0000000Bh   
 lightGray  . . . . . . . . . . .	Number	 00000007h   
@@ -864,16 +491,6 @@ lightGreen . . . . . . . . . . .	Number	 0000000Ah
 lightMagenta . . . . . . . . . .	Number	 0000000Dh   
 lightRed . . . . . . . . . . . .	Number	 0000000Ch   
 magenta  . . . . . . . . . . . .	Number	 00000005h   
-numQuestions . . . . . . . . . .	Byte	 000008D7 _DATA	
-playerAnswers  . . . . . . . . .	Byte	 000008D9 _DATA	
-questionBlankLen . . . . . . . .	Byte	 000008C3 _DATA	
-questionBlankStart . . . . . . .	Byte	 000008AF _DATA	
-questionOffsets  . . . . . . . .	DWord	 0000085F _DATA	
-quizBuffer . . . . . . . . . . .	Byte	 0000008B _DATA	
-quizBytesRead  . . . . . . . . .	DWord	 0000085B _DATA	
-quizFileEasy . . . . . . . . . .	Byte	 00000000 _DATA	
-quizFileHard . . . . . . . . . .	Byte	 0000002F _DATA	
-quizFileMed  . . . . . . . . . .	Byte	 00000018 _DATA	
 red  . . . . . . . . . . . . . .	Number	 00000004h   
 white  . . . . . . . . . . . . .	Number	 0000000Fh   
 wsprintf . . . . . . . . . . . .	Text   	 wsprintfA

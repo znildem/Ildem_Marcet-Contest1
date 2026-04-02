@@ -12,6 +12,7 @@
     <MASM Include="DinoRender.asm" />
     <MASM Include="Test.asm" />
     <MASM Include="Input.asm" />
+    <MASM Include="Score.asm" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="start_screen.txt" />
