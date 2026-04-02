@@ -1,9 +1,9 @@
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    03/31/26 20:46:00
-Test.asm						     Page 1 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/01/26 21:20:34
+DinoLogic.asm						     Page 1 - 1
 
 
-				; Handles quiz question loading and display for the left panel
-				
+				; Dino game logic only
+
 				INCLUDE Irvine32.inc
 			      C ; Include file for Irvine32.lib             (Irvine32.inc)
 			      C 
@@ -22,331 +22,176 @@ Test.asm						     Page 1 - 1
 			      C .NOLIST
 			      C .LIST
 			      C 
-				
-				FindChar PROTO
-				GetLineStart PROTO
-				GetLineLength PROTO
-				
-				; Left panel interior bounds
- = 00000001			PANEL_LEFT   = 1
- = 00000001			PANEL_TOP    = 1
- = 00000025			PANEL_WIDTH  = 37
- = 00000016			PANEL_HEIGHT = 22
-				
-				; Max questions and line buffer
- = 00000014			MAX_QUESTIONS       = 20
- = 000007D0			QUESTION_BUF_SIZE   = 2000
-				
+
+				GetAsyncKeyState PROTO, vKey:DWORD
+
+ = 00000020			VK_SPACE  = 20h
+ = 00000026			VK_UP     = 26h
+
  00000000			.data
- 00000000 71 75 69 7A 5F	quizFileEasy BYTE "quiz_questions_easy.txt", 0
-	   71 75 65 73 74
-	   69 6F 6E 73 5F
-	   65 61 73 79 2E
-	   74 78 74 00
- 00000018 51 75 69 7A 5C	quizFileMed  BYTE "Quiz\questions_med.txt", 0
-	   71 75 65 73 74
-	   69 6F 6E 73 5F
-	   6D 65 64 2E 74
-	   78 74 00
- 0000002F 51 75 69 7A 5C	quizFileHard BYTE "Quiz\questions_hard.txt", 0
-	   71 75 65 73 74
-	   69 6F 6E 73 5F
-	   68 61 72 64 2E
-	   74 78 74 00
-				
- 00000047  000007D0 [		quizBuffer      BYTE QUESTION_BUF_SIZE DUP(?)
-	    00
-	   ]
- 00000817 00000000		quizBytesRead   DWORD ?
-				
-				; Parallel arrays: byte offset of each question's start, and its blank start/length
- 0000081B  00000014 [		questionOffsets     DWORD MAX_QUESTIONS DUP(?)
-	    00000000
-	   ]
- 0000086B  00000014 [		questionBlankStart  BYTE  MAX_QUESTIONS DUP(?) ; col offset of '_' run within the line
-	    00
-	   ]
- 0000087F  00000014 [		questionBlankLen    BYTE  MAX_QUESTIONS DUP(?) ; number of '_' chars
-	    00
-	   ]
- 00000893 00			numQuestions        BYTE 0
-				
- 00000894 00			currQuestion        BYTE 0
-				
-				; Answers typed by the player (one slot per question, max 20 chars each)
- = 00000014			ANSWER_MAX_LEN = 20
- 00000895  00000190 [		playerAnswers   BYTE MAX_QUESTIONS * ANSWER_MAX_LEN DUP(0)
-	    00
-	   ]
-				
- 00000A25 00000000		parse_line_index DWORD ?
-				
+				PUBLIC DinoInit
+				PUBLIC DinoTick
+
+				EXTERN dinoY:SDWORD
+				EXTERN dinoVy:SDWORD
+				EXTERN cactusX:SDWORD
+				EXTERN dinoScore:DWORD
+				EXTERN dinoGameOver:BYTE
+				EXTERN cactusType:BYTE
+				EXTERN cactusHeight:BYTE
+				EXTERN cactusSpeed:SDWORD
+
  00000000			.code
-				PUBLIC LoadQuiz
-				PUBLIC DrawQuiz
-				PUBLIC GetCurrQuestion
-				PUBLIC GetNumQuestions
-				PUBLIC GetBlankLen
-				PUBLIC GetAnswerBuf
-				
-				; Loads questions from a difficulty file and parses them
-				; IN
-				;   eax: 0=easy, 1=med, 2=hard
-				; OUT
-				;   (fills quizBuffer, questionOffsets, questionBlankStart, questionBlankLen, numQuestions)
- 00000000			LoadQuiz PROC
- 00000000  50			    push eax
- 00000001  53			    push ebx
- 00000002  51			    push ecx
- 00000003  52			    push edx
- 00000004  56			    push esi
-				
-				    ; Open the correct file
-				    .if eax == 0
- 00000009  BA 00000000 R	        mov edx, OFFSET quizFileEasy
-				    .elseif eax == 1
- 00000015  BA 00000018 R	        mov edx, OFFSET quizFileMed
-				    .else
- 0000001C  BA 0000002F R	        mov edx, OFFSET quizFileHard
-				    .endif
- 00000021  E8 00000000 E	    call OpenInputFile
-				
-				    ; Read into buffer
- 00000026  BA 00000047 R	    mov edx, OFFSET quizBuffer
- 0000002B  B9 000007CF		    mov ecx, QUESTION_BUF_SIZE - 1
- 00000030  E8 00000000 E	    call ReadFromFile
- 00000035  A3 00000817 R	    mov quizBytesRead, eax
- 0000003A  C6 80 00000047 R	    mov BYTE PTR [quizBuffer + eax], 0
+
+ 00000000			DinoInit PROC
+ 00000000  C7 05 00000000 E		mov dinoY, 0
+	   00000000
+ 0000000A  C7 05 00000000 E		mov dinoVy, 0
+	   00000000
+ 00000014  C7 05 00000000 E		mov cactusX, 40
+	   00000028
+ 0000001E  C7 05 00000000 E		mov dinoScore, 0
+	   00000000
+ 00000028  C6 05 00000000 E		mov dinoGameOver, 0
 	   00
-				
-				    ; Parse buffer in one pass
- 00000041  C6 05 00000893 R	    mov numQuestions, 0
+ 0000002F  C6 05 00000000 E		mov cactusType, 0
 	   00
- 00000048  BE 00000047 R	    mov esi, OFFSET quizBuffer
- 0000004D  BA 00000000		    mov edx, 0              ; current byte offset
- 00000052  B9 00000000		    mov ecx, 0              ; current line start offset
-				
- 00000057			    parse_loop:
- 00000057  8A 1C 32		        mov bl, BYTE PTR [esi + edx]
- 0000005A  80 FB 00		        cmp bl, 0
- 0000005D  74 6E		        je parse_done
-				
- 0000005F  80 FB 0A		        cmp bl, 0Ah         ; LF = end of line
- 00000062  74 2E		        je parse_newline
-				
- 00000064  80 FB 5F		        cmp bl, '_'         ; found a blank character
- 00000067  75 61		        jne parse_next
-				
-				        ; Check if this is the first '_' on this line
- 00000069  0F B6 1D		        movzx ebx, numQuestions
-	   00000893 R
- 00000070  80 BB 0000087F R	        cmp BYTE PTR questionBlankLen[ebx], 0
+ 00000036  C6 05 00000000 E		mov cactusHeight, 0
 	   00
- 00000077  75 0A		        jne parse_count_blank   ; already found the start, just count
-				
-				        ; First '_' on this line - record its col offset
- 00000079  8B C2		        mov eax, edx
- 0000007B  2B C1		        sub eax, ecx            ; col = current offset - line start
- 0000007D  88 83 0000086B R	        mov BYTE PTR questionBlankStart[ebx], al
-				
- 00000083			        parse_count_blank:
- 00000083  0F B6 1D		        movzx ebx, numQuestions
-	   00000893 R
- 0000008A  FE 83 0000087F R	        inc BYTE PTR questionBlankLen[ebx]
- 00000090  EB 38		        jmp parse_next
-				
- 00000092			        parse_newline:
-				        ; Store line start and move to next
- 00000092  0F B6 1D		        movzx ebx, numQuestions
-	   00000893 R
- 00000099  89 0C 9D		        mov questionOffsets[ebx * 4], ecx
-	   0000081B R
-				
- 000000A0  FE 05 00000893 R	        inc numQuestions
- 000000A6  A0 00000893 R	        mov al, numQuestions
- 000000AB  3C 14		        cmp al, MAX_QUESTIONS
- 000000AD  7D 1E		        jge parse_done
-				
-				        ; Reset blank tracking for next question
- 000000AF  0F B6 1D		        movzx ebx, numQuestions
-	   00000893 R
- 000000B6  C6 83 0000086B R	        mov BYTE PTR questionBlankStart[ebx], 0
-	   00
- 000000BD  C6 83 0000087F R	        mov BYTE PTR questionBlankLen[ebx], 0
-	   00
-				
- 000000C4  8B CA		        mov ecx, edx
- 000000C6  41			        inc ecx             ; next line starts after the LF
- 000000C7  42			        inc edx
- 000000C8  EB 8D		        jmp parse_loop
-				
- 000000CA			        parse_next:
- 000000CA  42			        inc edx
- 000000CB  EB 8A		        jmp parse_loop
-				
- 000000CD			    parse_done:
-				    ; Handle last line if file doesn't end with newline
- 000000CD  3B D1		    cmp edx, ecx
- 000000CF  74 14		    je last_line_skip
- 000000D1  0F B6 1D		    movzx ebx, numQuestions
-	   00000893 R
- 000000D8  89 0C 9D		    mov questionOffsets[ebx * 4], ecx
-	   0000081B R
- 000000DF  FE 05 00000893 R	    inc numQuestions
- 000000E5			    last_line_skip:
-				
- 000000E5  C6 05 00000894 R	    mov currQuestion, 0
-	   00
-				
- 000000EC  5E			    pop esi
- 000000ED  5A			    pop edx
- 000000EE  59			    pop ecx
- 000000EF  5B			    pop ebx
- 000000F0  58			    pop eax
- 000000F1  C3			    ret
- 000000F2			LoadQuiz ENDP
-				
-				; Draws all questions in the left panel
-				; Highlights the blank of the currently selected question in white-on-black inverse
- 000000F2			DrawQuiz PROC
- 000000F2  50			    push eax
- 000000F3  53			    push ebx
- 000000F4  51			    push ecx
- 000000F5  52			    push edx
- 000000F6  56			    push esi
-				
- 000000F7  B9 00000000		    mov ecx, 0                          ; question index
- 000000FC			    draw_loop:
- 000000FC  A0 00000893 R	        mov al, numQuestions
- 00000101  3A C8		        cmp cl, al
- 00000103  0F 8D 000000B5	        jge draw_done
-				
-				        ; Position cursor: row = PANEL_TOP + question index, col = PANEL_LEFT
- 00000109  8A F1		        mov dh, cl
- 0000010B  80 C6 01		        add dh, PANEL_TOP
- 0000010E  B2 01		        mov dl, PANEL_LEFT
- 00000110  E8 00000000 E	        call Gotoxy
-				
-				        ; Default color
- 00000115  B8 0000000F		        mov eax, white + (black * 16)
- 0000011A  E8 00000000 E	        call SetTextColor
-				
-				        ; Print the line character by character so we can swap color on the blank
- 0000011F  0F B6 D9		        movzx ebx, cl                   ; ebx = question index
- 00000122  8B 04 9D		        mov eax, questionOffsets[ebx * 4]
-	   0000081B R
- 00000129  BE 00000047 R	        mov esi, OFFSET quizBuffer
- 0000012E  BA 00000000		        mov edx, 0                      ; col counter within line
-				
- 00000133			        print_line_loop:
- 00000133  8A 04 30		            mov al, BYTE PTR [esi + eax]
- 00000136  3C 00		            cmp al, 0
- 00000138  74 7E		            je print_line_done
- 0000013A  3C 0D		            cmp al, 0Dh
- 0000013C  74 7A		            je print_line_done
- 0000013E  3C 0A		            cmp al, 0Ah
- 00000140  74 76		            je print_line_done
-				
-				            ; Check if we're inside the blank run
- 00000142  0F B6 D9		            movzx ebx, cl
- 00000145  0F B6 9B		            movzx ebx, BYTE PTR questionBlankStart[ebx]
-	   0000086B R
- 0000014C  3B D3		            cmp edx, ebx
- 0000014E  7C 3E		            jl not_in_blank
- 00000150  0F B6 D9		            movzx ebx, cl
- 00000153  0F B6 9B		            movzx ebx, BYTE PTR questionBlankStart[ebx]
-	   0000086B R
- 0000015A  0F B6 F1		            movzx esi, cl
- 0000015D  0F B6 B6		            movzx esi, BYTE PTR questionBlankLen[esi]
-	   0000087F R
- 00000164  03 DE		            add ebx, esi
- 00000166  3B D3		            cmp edx, ebx
- 00000168  7D 24		            jge not_in_blank
-				
-				            ; Inside blank: highlight if this is the selected question
-				            .if cl == currQuestion
- 00000172  50			                push eax
- 00000173  B8 000000F0		                mov eax, black + (white * 16)
- 00000178  E8 00000000 E	                call SetTextColor
- 0000017D  58			                pop eax
-				            .else
- 00000180  50			                push eax
- 00000181  B8 0000000F		                mov eax, white + (black * 16)
- 00000186  E8 00000000 E	                call SetTextColor
- 0000018B  58			                pop eax
-				            .endif
- 0000018C  EB 0C		            jmp do_print
-				
- 0000018E			            not_in_blank:
- 0000018E  50			            push eax
- 0000018F  B8 0000000F		            mov eax, white + (black * 16)
- 00000194  E8 00000000 E	            call SetTextColor
- 00000199  58			            pop eax
-				
- 0000019A			            do_print:
-				            ; Reload esi (was clobbered above)
- 0000019A  50			            push eax
- 0000019B  BE 00000047 R	            mov esi, OFFSET quizBuffer
- 000001A0  58			            pop eax
-				
- 000001A1  E8 00000000 E	            call WriteChar
- 000001A6  42			            inc edx
-				
-				            ; Reload line base offset for next iteration
- 000001A7  0F B6 D9		            movzx ebx, cl
- 000001AA  8B 04 9D		            mov eax, questionOffsets[ebx * 4]
-	   0000081B R
- 000001B1  03 C2		            add eax, edx
-				
- 000001B3  E9 FFFFFF7B		            jmp print_line_loop
-				
- 000001B8			        print_line_done:
- 000001B8  41			        inc ecx
- 000001B9  E9 FFFFFF3E		        jmp draw_loop
-				
- 000001BE			    draw_done:
- 000001BE  5E			    pop esi
- 000001BF  5A			    pop edx
- 000001C0  59			    pop ecx
- 000001C1  5B			    pop ebx
- 000001C2  58			    pop eax
- 000001C3  C3			    ret
- 000001C4			DrawQuiz ENDP
-				
-				; Returns currQuestion in al
- 000001C4			GetCurrQuestion PROC
- 000001C4  A0 00000894 R	    mov al, currQuestion
- 000001C9  C3			    ret
- 000001CA			GetCurrQuestion ENDP
-				
-				; Returns numQuestions in al
- 000001CA			GetNumQuestions PROC
- 000001CA  A0 00000893 R	    mov al, numQuestions
- 000001CF  C3			    ret
- 000001D0			GetNumQuestions ENDP
-				
-				; Returns the blank length of question N in al
-				; IN: al = question index
- 000001D0			GetBlankLen PROC
- 000001D0  0F B6 C0		    movzx eax, al
- 000001D3  8A 80 0000087F R	    mov al, BYTE PTR questionBlankLen[eax]
- 000001D9  C3			    ret
- 000001DA			GetBlankLen ENDP
-				
-				; Returns in edx the address of the answer buffer for question N
-				; IN: al = question index
- 000001DA			GetAnswerBuf PROC
- 000001DA  0F B6 C0		    movzx eax, al
- 000001DD  BA 00000014		    mov edx, ANSWER_MAX_LEN
- 000001E2  F7 E2		    mul edx
- 000001E4  05 00000895 R	    add eax, OFFSET playerAnswers
- 000001E9  8B D0		    mov edx, eax
- 000001EB  C3			    ret
- 000001EC			GetAnswerBuf ENDP
-				
+ 0000003D  C7 05 00000000 E		mov cactusSpeed, 1
+	   00000001
+ 00000047  C3				ret
+ 00000048			DinoInit ENDP
+
+ 00000048			DinoTick PROC
+					; If game over, press Space to reset
+					.if dinoGameOver == 1
+						invoke GetAsyncKeyState, VK_SPACE
+ 00000058  66| A9 8000				test ax, 8000h
+ 0000005C  0F 84 00000115			jz tick_end
+
+ 00000062  E8 FFFFFF99				call DinoInit
+ 00000067  E9 0000010B				jmp tick_end
+					.endif
+
+					; Jump on Space or Up Arrow only if on ground
+					invoke GetAsyncKeyState, VK_SPACE
+ 00000073  66| A9 8000			test ax, 8000h
+ 00000077  75 0D			jnz try_jump
+
+					invoke GetAsyncKeyState, VK_UP
+ 00000080  66| A9 8000			test ax, 8000h
+ 00000084  74 14			jz skip_input
+
+ 00000086			try_jump:
+ 00000086  A1 00000000 E		mov eax, dinoY
+ 0000008B  83 F8 00			cmp eax, 0
+ 0000008E  75 0A			jne skip_input
+
+ 00000090  C7 05 00000000 E		mov dinoVy, 5
+	   00000005
+
+ 0000009A			skip_input:
+
+					; dinoY += dinoVy
+ 0000009A  A1 00000000 E		mov eax, dinoY
+ 0000009F  03 05 00000000 E		add eax, dinoVy
+ 000000A5  A3 00000000 E		mov dinoY, eax
+
+					; dinoVy -= 1
+ 000000AA  A1 00000000 E		mov eax, dinoVy
+ 000000AF  83 E8 01			sub eax, 1
+ 000000B2  A3 00000000 E		mov dinoVy, eax
+
+					; clamp to ground
+ 000000B7  A1 00000000 E		mov eax, dinoY
+ 000000BC  83 F8 00			cmp eax, 0
+ 000000BF  7D 14			jge skip_ground_clamp
+
+ 000000C1  C7 05 00000000 E		mov dinoY, 0
+	   00000000
+ 000000CB  C7 05 00000000 E		mov dinoVy, 0
+	   00000000
+
+ 000000D5			skip_ground_clamp:
+
+					; move cactus left
+ 000000D5  A1 00000000 E		mov eax, cactusX
+ 000000DA  2B 05 00000000 E		sub eax, cactusSpeed
+ 000000E0  A3 00000000 E		mov cactusX, eax
+
+					; reset cactus and increment score
+ 000000E5  83 F8 00			cmp eax, 0
+ 000000E8  7D 53			jge skip_cactus_reset
+
+ 000000EA  C7 05 00000000 E		mov cactusX, 40
+	   00000028
+ 000000F4  FF 05 00000000 E		inc dinoScore
+
+					; increase speed every 5 points
+ 000000FA  A1 00000000 E		mov eax, dinoScore
+ 000000FF  BB 0000000A			mov ebx, 10
+ 00000104  BA 00000000			mov edx, 0
+ 00000109  F7 F3			div ebx
+ 0000010B  83 FA 00			cmp edx, 0
+ 0000010E  75 0F			jne skip_speed_increase
+
+ 00000110  83 3D 00000000 E		cmp cactusSpeed, 5
+	   05
+ 00000117  7D 06			jge skip_speed_increase
+ 00000119  FF 05 00000000 E		inc cactusSpeed
+
+ 0000011F			skip_speed_increase:
+
+					; random type (0 or 1)
+ 0000011F  B8 00000002			mov eax, 2
+ 00000124  E8 00000000 E		call RandomRange
+ 00000129  A2 00000000 E		mov cactusType, al
+
+					; random height (0,1,2)
+ 0000012E  B8 00000003			mov eax, 3
+ 00000133  E8 00000000 E		call RandomRange
+ 00000138  A2 00000000 E		mov cactusHeight, al
+
+ 0000013D			skip_cactus_reset:
+
+					; collision check
+ 0000013D  A1 00000000 E		mov eax, cactusX
+ 00000142  83 F8 08			cmp eax, 8
+ 00000145  7C 30			jl tick_end
+
+ 00000147  0F B6 1D			movzx ebx, cactusType
+	   00000000 E
+ 0000014E  83 FB 00			cmp ebx, 0
+ 00000151  74 07			je normal_width
+
+					; large cactus
+ 00000153  83 F8 0B			cmp eax, 11
+ 00000156  7F 1F			jg tick_end
+ 00000158  EB 05			jmp check_height
+
+ 0000015A			normal_width:
+ 0000015A  83 F8 0A			cmp eax, 10
+ 0000015D  7F 18			jg tick_end
+
+ 0000015F			check_height:
+ 0000015F  0F B6 1D			movzx ebx, cactusHeight
+	   00000000 E
+ 00000166  43				inc ebx
+ 00000167  A1 00000000 E		mov eax, dinoY
+ 0000016C  3B C3			cmp eax, ebx
+ 0000016E  7F 07			jg tick_end
+
+ 00000170  C6 05 00000000 E		mov dinoGameOver, 1
+	   01
+
+ 00000177			tick_end:
+ 00000177  C3				ret
+ 00000178			DinoTick ENDP
+
 				END
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    03/31/26 20:46:00
-Test.asm						     Symbols 2 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/01/26 21:20:34
+DinoLogic.asm						     Symbols 2 - 1
 
 
 
@@ -439,8 +284,8 @@ Segments and Groups:
 
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
-_DATA  . . . . . . . . . . . . .	32 Bit	 00000A29 Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 000001EC Para	  Public  'CODE'	
+_DATA  . . . . . . . . . . . . .	32 Bit	 00000000 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 00000178 Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
@@ -454,40 +299,37 @@ CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 CreateOutputFile . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-DrawQuiz . . . . . . . . . . . .	P Near	 000000F2 _TEXT	Length= 000000D2 Public STDCALL
-  draw_loop  . . . . . . . . . .	L Near	 000000FC _TEXT	
-  print_line_loop  . . . . . . .	L Near	 00000133 _TEXT	
-  not_in_blank . . . . . . . . .	L Near	 0000018E _TEXT	
-  do_print . . . . . . . . . . .	L Near	 0000019A _TEXT	
-  print_line_done  . . . . . . .	L Near	 000001B8 _TEXT	
-  draw_done  . . . . . . . . . .	L Near	 000001BE _TEXT	
+DinoInit . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000048 Public STDCALL
+DinoTick . . . . . . . . . . . .	P Near	 00000048 _TEXT	Length= 00000130 Public STDCALL
+  try_jump . . . . . . . . . . .	L Near	 00000086 _TEXT	
+  skip_input . . . . . . . . . .	L Near	 0000009A _TEXT	
+  skip_ground_clamp  . . . . . .	L Near	 000000D5 _TEXT	
+  skip_speed_increase  . . . . .	L Near	 0000011F _TEXT	
+  skip_cactus_reset  . . . . . .	L Near	 0000013D _TEXT	
+  normal_width . . . . . . . . .	L Near	 0000015A _TEXT	
+  check_height . . . . . . . . .	L Near	 0000015F _TEXT	
+  tick_end . . . . . . . . . . .	L Near	 00000177 _TEXT	
 DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-FindChar . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetAnswerBuf . . . . . . . . . .	P Near	 000001DA _TEXT	Length= 00000012 Public STDCALL
-GetBlankLen  . . . . . . . . . .	P Near	 000001D0 _TEXT	Length= 0000000A Public STDCALL
+GetAsyncKeyState . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandTail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleCP . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleScreenBufferInfo . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetCurrQuestion  . . . . . . . .	P Near	 000001C4 _TEXT	Length= 00000006 Public STDCALL
 GetDateTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetFileTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetKeyState  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetLastError . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetLineLength  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetLineStart . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetMaxXY . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetMseconds  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetNumQuestions  . . . . . . . .	P Near	 000001CA _TEXT	Length= 00000006 Public STDCALL
 GetNumberOfConsoleInputEvents  .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetProcessHeap . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetStdHandle . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -501,13 +343,6 @@ HeapDestroy  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 HeapFree . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 HeapSize . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 IsDigit  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-LoadQuiz . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 000000F2 Public STDCALL
-  parse_loop . . . . . . . . . .	L Near	 00000057 _TEXT	
-  parse_count_blank  . . . . . .	L Near	 00000083 _TEXT	
-  parse_newline  . . . . . . . .	L Near	 00000092 _TEXT	
-  parse_next . . . . . . . . . .	L Near	 000000CA _TEXT	
-  parse_done . . . . . . . . . .	L Near	 000000CD _TEXT	
-  last_line_skip . . . . . . . .	L Near	 000000E5 _TEXT	
 LocalFree  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MessageBoxA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MsgBoxAsk  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -587,7 +422,6 @@ Symbols:
 @fardata . . . . . . . . . . . .	Text   	 FLAT
 @stack . . . . . . . . . . . . .	Text   	 FLAT
 ALT_MASK . . . . . . . . . . . .	Number	 00000003h   
-ANSWER_MAX_LEN . . . . . . . . .	Number	 00000014h   
 CAPSLOCK_ON  . . . . . . . . . .	Number	 00000080h   
 CREATE_ALWAYS  . . . . . . . . .	Number	 00000002h   
 CREATE_NEW . . . . . . . . . . .	Number	 00000001h   
@@ -660,7 +494,6 @@ KEY_EVENT  . . . . . . . . . . .	Number	 00000001h
 KEY_MASKS  . . . . . . . . . . .	Number	 0000001Fh   
 LEFT_ALT_PRESSED . . . . . . . .	Number	 00000002h   
 LEFT_CTRL_PRESSED  . . . . . . .	Number	 00000008h   
-MAX_QUESTIONS  . . . . . . . . .	Number	 00000014h   
 MB_ABORTRETRYIGNORE  . . . . . .	Number	 00000002h   
 MB_APPLMODAL . . . . . . . . . .	Number	 00000000h   
 MB_CANCELTRYCONTINUE . . . . . .	Number	 00000006h   
@@ -692,12 +525,7 @@ NULL . . . . . . . . . . . . . .	Number	 00000000h
 NUMLOCK_ON . . . . . . . . . . .	Number	 00000020h   
 OPEN_ALWAYS  . . . . . . . . . .	Number	 00000004h   
 OPEN_EXISTING  . . . . . . . . .	Number	 00000003h   
-PANEL_HEIGHT . . . . . . . . . .	Number	 00000016h   
-PANEL_LEFT . . . . . . . . . . .	Number	 00000001h   
-PANEL_TOP  . . . . . . . . . . .	Number	 00000001h   
-PANEL_WIDTH  . . . . . . . . . .	Number	 00000025h   
 PeekConsoleInput . . . . . . . .	Text   	 PeekConsoleInputA
-QUESTION_BUF_SIZE  . . . . . . .	Number	 000007D0h   
 RIGHT_ALT_PRESSED  . . . . . . .	Number	 00000001h   
 RIGHT_CTRL_PRESSED . . . . . . .	Number	 00000004h   
 ReadConsoleInput . . . . . . . .	Text   	 ReadConsoleInputA
@@ -796,8 +624,15 @@ WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
 black  . . . . . . . . . . . . .	Number	 00000000h   
 blue . . . . . . . . . . . . . .	Number	 00000001h   
 brown  . . . . . . . . . . . . .	Number	 00000006h   
-currQuestion . . . . . . . . . .	Byte	 00000894 _DATA	
+cactusHeight . . . . . . . . . .	Byte	 00000000 FLAT	External STDCALL
+cactusSpeed  . . . . . . . . . .	DWord	 00000000 FLAT	External STDCALL
+cactusType . . . . . . . . . . .	Byte	 00000000 FLAT	External STDCALL
+cactusX  . . . . . . . . . . . .	DWord	 00000000 FLAT	External STDCALL
 cyan . . . . . . . . . . . . . .	Number	 00000003h   
+dinoGameOver . . . . . . . . . .	Byte	 00000000 FLAT	External STDCALL
+dinoScore  . . . . . . . . . . .	DWord	 00000000 FLAT	External STDCALL
+dinoVy . . . . . . . . . . . . .	DWord	 00000000 FLAT	External STDCALL
+dinoY  . . . . . . . . . . . . .	DWord	 00000000 FLAT	External STDCALL
 exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
 gray . . . . . . . . . . . . . .	Number	 00000008h   
 green  . . . . . . . . . . . . .	Number	 00000002h   
@@ -808,17 +643,6 @@ lightGreen . . . . . . . . . . .	Number	 0000000Ah
 lightMagenta . . . . . . . . . .	Number	 0000000Dh   
 lightRed . . . . . . . . . . . .	Number	 0000000Ch   
 magenta  . . . . . . . . . . . .	Number	 00000005h   
-numQuestions . . . . . . . . . .	Byte	 00000893 _DATA	
-parse_line_index . . . . . . . .	DWord	 00000A25 _DATA	
-playerAnswers  . . . . . . . . .	Byte	 00000895 _DATA	
-questionBlankLen . . . . . . . .	Byte	 0000087F _DATA	
-questionBlankStart . . . . . . .	Byte	 0000086B _DATA	
-questionOffsets  . . . . . . . .	DWord	 0000081B _DATA	
-quizBuffer . . . . . . . . . . .	Byte	 00000047 _DATA	
-quizBytesRead  . . . . . . . . .	DWord	 00000817 _DATA	
-quizFileEasy . . . . . . . . . .	Byte	 00000000 _DATA	
-quizFileHard . . . . . . . . . .	Byte	 0000002F _DATA	
-quizFileMed  . . . . . . . . . .	Byte	 00000018 _DATA	
 red  . . . . . . . . . . . . . .	Number	 00000004h   
 white  . . . . . . . . . . . . .	Number	 0000000Fh   
 wsprintf . . . . . . . . . . . .	Text   	 wsprintfA

@@ -16,15 +16,21 @@ EXTERN dinoVy:SDWORD
 EXTERN cactusX:SDWORD
 EXTERN dinoScore:DWORD
 EXTERN dinoGameOver:BYTE
+EXTERN cactusType:BYTE
+EXTERN cactusHeight:BYTE
+EXTERN cactusSpeed:SDWORD
 
 .code
 
 DinoInit PROC
 	mov dinoY, 0
 	mov dinoVy, 0
-	mov cactusX, 30
+	mov cactusX, 40
 	mov dinoScore, 0
 	mov dinoGameOver, 0
+	mov cactusType, 0
+	mov cactusHeight, 0
+	mov cactusSpeed, 1
 	ret
 DinoInit ENDP
 
@@ -53,7 +59,7 @@ try_jump:
 	cmp eax, 0
 	jne skip_input
 
-	mov dinoVy, 4
+	mov dinoVy, 5
 
 skip_input:
 
@@ -79,28 +85,66 @@ skip_ground_clamp:
 
 	; move cactus left
 	mov eax, cactusX
-	dec eax
+	sub eax, cactusSpeed
 	mov cactusX, eax
 
 	; reset cactus and increment score
 	cmp eax, 0
 	jge skip_cactus_reset
 
-	mov cactusX, 30
+	mov cactusX, 40
 	inc dinoScore
+
+	; increase speed every 5 points
+	mov eax, dinoScore
+	mov ebx, 10
+	mov edx, 0
+	div ebx
+	cmp edx, 0
+	jne skip_speed_increase
+
+	cmp cactusSpeed, 5
+	jge skip_speed_increase
+	inc cactusSpeed
+
+skip_speed_increase:
+
+	; random type (0 or 1)
+	mov eax, 2
+	call RandomRange
+	mov cactusType, al
+
+	; random height (0,1,2)
+	mov eax, 3
+	call RandomRange
+	mov cactusHeight, al
 
 skip_cactus_reset:
 
-	; collision if cactus near dino and dino is on ground
+	; collision check
 	mov eax, cactusX
-	cmp eax, 5
+	cmp eax, 8
 	jl tick_end
-	cmp eax, 7
+
+	movzx ebx, cactusType
+	cmp ebx, 0
+	je normal_width
+
+	; large cactus
+	cmp eax, 11
+	jg tick_end
+	jmp check_height
+
+normal_width:
+	cmp eax, 10
 	jg tick_end
 
+check_height:
+	movzx ebx, cactusHeight
+	inc ebx
 	mov eax, dinoY
-	cmp eax, 0
-	jne tick_end
+	cmp eax, ebx
+	jg tick_end
 
 	mov dinoGameOver, 1
 

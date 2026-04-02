@@ -8,6 +8,9 @@ PUBLIC dinoVy
 PUBLIC cactusX
 PUBLIC dinoScore
 PUBLIC dinoGameOver
+PUBLIC cactusType 
+PUBLIC cactusHeight
+PUBLIC cactusSpeed
 
 ; Dino vertical position
 ; 0 = on ground
@@ -26,5 +29,14 @@ dinoScore DWORD 0
 ; 0 = still playing
 ; 1 = collision / game over
 dinoGameOver BYTE 0
+
+; 0 = normal obstacle, 1 = double-width obstacle
+cactusType BYTE 0
+
+; vertical offset (0 = ground, 1-2 = higher)
+cactusHeight BYTE 0
+
+; cactus movement speed
+cactusSpeed SDWORD 1
 
 END
