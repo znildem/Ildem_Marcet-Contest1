@@ -64,7 +64,7 @@ DrawDinoGame PROC
 	ret
 
 draw_objects:
-		; Draw cactus
+	; Draw cactus
 	movzx eax, cactusType
 	cmp eax, 0
 	je draw_small_cactus
@@ -130,7 +130,6 @@ draw_small_cactus:
 cactus_done:
 
 	; Draw dinosaur
-		; Draw dinosaur
 	mov eax, dinoY
 	mov ebx, 20
 	sub ebx, eax
