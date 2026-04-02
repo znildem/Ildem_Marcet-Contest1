@@ -1,9 +1,9 @@
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/02/26 00:29:43
-Main.asm						     Page 1 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/02/26 00:33:55
+Game.asm						     Page 1 - 1
 
 
-				; Main file to control execution
-
+				; This will handle the game logic
+				
 				INCLUDE Irvine32.inc
 			      C ; Include file for Irvine32.lib             (Irvine32.inc)
 			      C 
@@ -22,33 +22,298 @@ Main.asm						     Page 1 - 1
 			      C .NOLIST
 			      C .LIST
 			      C 
-
-				MainMenu PROTO; runs the menu
+				
+				UpdateScreen PROTO
+				ClearScreen PROTO
+				DrawBase PROTO
 				StartTimers PROTO
 				UpdateTimers PROTO
-				DrawTimer PROTO
-				SetConsoleSize PROTO
-				UpdateScreen PROTO
-				Game PROTO
-
+				DrawTimers PROTO
+				SwitchTimers PROTO
+				HandleInput PROTO
+				
+				DinoInit PROTO
+				DinoTick PROTO
+				
+				LoadQuiz PROTO
+				LoadLab PROTO
+				DrawQuiz PROTO
+				DrawLab PROTO
+				
+				CheckQuiz PROTO
+				CheckLab PROTO
+				
+				GetAsyncKeyState PROTO, vKey:DWORD
+ = 0000000D			VK_RETURN = 0Dh
+				
+				EXTERN chosenDifficulty:BYTE
+				EXTERN quizScore:DWORD
+				EXTERN labScore:DWORD
+				
+ 00000000			.data
+				PUBLIC currState
+ 00000000 00			currState BYTE ?
+				; Possible game states:
+				    ; currState=0: game start
+				    ; currState=1: getting quiz
+				    ; currState=2: solving quiz
+				    ; currState=3: turning in quiz
+				    ; currState=4: getting lab
+				    ; currState=5: solving lab
+				    ; currState=6: turning in lab
+				    ; currState=7: game end
+				
+ 00000001 00			last_input BYTE 0
+				
+ 00000002 53 63 6F 72 65	scoreQuizLabel  BYTE "Score: ", 0
+	   3A 20 00
+ 0000000A 53 63 6F 72 65	scoreLabLabel   BYTE "Score: ", 0
+	   3A 20 00
+ 00000012 2F 35 30 00		scoreSuffix50   BYTE "/50", 0
+ 00000016 54 6F 74 61 6C	scoreTotalLabel BYTE "Total Score: ", 0
+	   20 53 63 6F 72
+	   65 3A 20 00
+ 00000024 2F 31 30 30 00	scoreSuffix100  BYTE "/100", 0
+				
  00000000			.code
-
- 00000000			Main PROC
- 00000000				game_loop:
- 00000000  E8 00000000 E		call MainMenu
-					.if al == 3 ; Exit option
- 00000009  EB 0D				jmp procedure_end
-					.elseif al == 0 ; Start option
- 00000011  E8 00000000 E			call Game
-					.endif
- 00000016  EB E8			jmp game_loop
- 00000018				procedure_end:
-					exit
- 0000001F			Main ENDP
-
-				END Main
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/02/26 00:29:43
-Main.asm						     Symbols 2 - 1
+				PUBLIC Game
+				
+ 00000000			DrawEndScreen PROC
+ 00000000  50			    push eax
+ 00000001  53			    push ebx
+ 00000002  52			    push edx
+				
+ 00000003  E8 00000000 E	    call ClearScreen
+ 00000008  E8 00000000 E	    call DrawBase
+				
+				    ; Left panel: quiz questions
+ 0000000D  E8 00000000 E	    call DrawQuiz
+				
+				    ; Quiz score at bottom of left panel interior (row 22, col 1)
+ 00000012  B8 0000000F		    mov eax, white + (black * 16)
+ 00000017  E8 00000000 E	    call SetTextColor
+ 0000001C  B6 16		    mov dh, 22
+ 0000001E  B2 01		    mov dl, 1
+ 00000020  E8 00000000 E	    call Gotoxy
+ 00000025  BA 00000002 R	    mov edx, OFFSET scoreQuizLabel
+ 0000002A  E8 00000000 E	    call WriteString
+ 0000002F  A1 00000000 E	    mov eax, quizScore
+ 00000034  E8 00000000 E	    call WriteDec
+ 00000039  BA 00000012 R	    mov edx, OFFSET scoreSuffix50
+ 0000003E  E8 00000000 E	    call WriteString
+				
+				    ; Right panel: lab questions
+ 00000043  E8 00000000 E	    call DrawLab
+				
+				    ; Lab score at bottom of right panel interior (row 22, col 39)
+ 00000048  B8 0000000F		    mov eax, white + (black * 16)
+ 0000004D  E8 00000000 E	    call SetTextColor
+ 00000052  B6 16		    mov dh, 22
+ 00000054  B2 27		    mov dl, 39
+ 00000056  E8 00000000 E	    call Gotoxy
+ 0000005B  BA 0000000A R	    mov edx, OFFSET scoreLabLabel
+ 00000060  E8 00000000 E	    call WriteString
+ 00000065  A1 00000000 E	    mov eax, labScore
+ 0000006A  E8 00000000 E	    call WriteDec
+ 0000006F  BA 00000012 R	    mov edx, OFFSET scoreSuffix50
+ 00000074  E8 00000000 E	    call WriteString
+				
+				    ; Total score at row 24 (timer row)
+ 00000079  B6 18		    mov dh, 24
+ 0000007B  B2 00		    mov dl, 0
+ 0000007D  E8 00000000 E	    call Gotoxy
+ 00000082  B8 0000000F		    mov eax, white + (black * 16)
+ 00000087  E8 00000000 E	    call SetTextColor
+ 0000008C  BA 00000016 R	    mov edx, OFFSET scoreTotalLabel
+ 00000091  E8 00000000 E	    call WriteString
+ 00000096  A1 00000000 E	    mov eax, quizScore
+ 0000009B  03 05 00000000 E	    add eax, labScore
+ 000000A1  E8 00000000 E	    call WriteDec
+ 000000A6  BA 00000024 R	    mov edx, OFFSET scoreSuffix100
+ 000000AB  E8 00000000 E	    call WriteString
+				
+ 000000B0  5A			    pop edx
+ 000000B1  5B			    pop ebx
+ 000000B2  58			    pop eax
+ 000000B3  C3			    ret
+ 000000B4			DrawEndScreen ENDP
+				
+ 000000B4			Game PROC
+ 000000B4  C6 05 00000000 R	    mov currState, 0
+	   00
+				
+ 000000BB  E8 00000000 E	    call ClearScreen
+ 000000C0  E8 00000000 E	    call UpdateScreen
+ 000000C5  E8 00000000 E	    call StartTimers
+				
+				    ; State 0: wait at start screen until enter
+ 000000CA			    press_enter_loop_start:
+ 000000CA  E8 00000000 E	        call UpdateTimers
+ 000000CF  B8 00000032		        mov eax, 50
+ 000000D4  E8 00000000 E	        call Delay
+ 000000D9  E8 00000000 E	        call ReadKey
+ 000000DE  3C 0D		        cmp al, 13
+ 000000E0  75 E8		        jne press_enter_loop_start
+				
+				    ; Load quiz with chosen difficulty
+ 000000E2  0F B6 05		    movzx eax, chosenDifficulty
+	   00000000 E
+ 000000E9  E8 00000000 E	    call LoadQuiz
+				
+				    ; State 1: getting quiz (dino runs while player walks to get quiz)
+ 000000EE  C6 05 00000000 R	    mov currState, 1
+	   01
+ 000000F5  E8 00000000 E	    call DinoInit
+ 000000FA			    getting_quiz_loop_start:
+ 000000FA  E8 00000000 E	        call DinoTick
+ 000000FF  E8 00000000 E	        call UpdateScreen
+ 00000104  E8 00000000 E	        call DrawTimers
+ 00000109  E8 00000000 E	        call UpdateTimers
+ 0000010E  B8 00000032		        mov eax, 50
+ 00000113  E8 00000000 E	        call Delay
+				
+				        invoke GetAsyncKeyState, VK_RETURN
+ 0000011F  66| A9 8000		        test ax, 8000h
+ 00000123  74 D5		        jz getting_quiz_loop_start
+				
+ 00000125  B8 00000096		        mov eax, 150
+ 0000012A  E8 00000000 E	        call Delay
+				
+				    ; State 2: solving quiz
+ 0000012F  C6 05 00000000 R	    mov currState, 2
+	   02
+ 00000136  E8 00000000 E	    call ClearScreen
+ 0000013B  E8 00000000 E	    call DrawBase
+ 00000140  E8 00000000 E	    call DrawQuiz
+ 00000145  E8 00000000 E	    call DrawTimers
+ 0000014A			    drain_buf_2:
+ 0000014A  E8 00000000 E	        call ReadKey
+ 0000014F  80 FC 00		        cmp ah, 0
+ 00000152  75 F6		        jne drain_buf_2
+ 00000154			    flush_keys_2:
+				        invoke GetAsyncKeyState, VK_RETURN
+ 0000015B  66| A9 8000		        test ax, 8000h
+ 0000015F  75 F3		        jnz flush_keys_2
+ 00000161			    quiz_loop_start:
+ 00000161  E8 00000000 E	        call HandleInput
+ 00000166  A2 00000001 R	        mov last_input, al
+ 0000016B  E8 00000000 E			call DrawBase
+ 00000170  E8 00000000 E			call DrawQuiz
+ 00000175  E8 00000000 E	        call UpdateTimers
+ 0000017A  B8 00000032		        mov eax, 50
+ 0000017F  E8 00000000 E	        call Delay
+ 00000184  80 3D 00000001 R	        cmp last_input, 0Dh
+	   0D
+ 0000018B  75 D4		        jne quiz_loop_start
+				
+ 0000018D  B8 00000096		        mov eax, 150
+ 00000192  E8 00000000 E	        call Delay
+				
+				    ; State 3: turning in quiz (dino)
+ 00000197  C6 05 00000000 R	    mov currState, 3
+	   03
+ 0000019E  E8 00000000 E	    call DinoInit
+ 000001A3			    turning_in_quiz_loop_start:
+ 000001A3  E8 00000000 E	        call DinoTick
+ 000001A8  E8 00000000 E	        call UpdateScreen
+ 000001AD  E8 00000000 E	        call DrawTimers
+ 000001B2  E8 00000000 E	        call UpdateTimers
+ 000001B7  B8 00000032		        mov eax, 50
+ 000001BC  E8 00000000 E	        call Delay
+				
+				        invoke GetAsyncKeyState, VK_RETURN
+ 000001C8  66| A9 8000		        test ax, 8000h
+ 000001CC  74 D5		        jz turning_in_quiz_loop_start
+ 000001CE  E8 00000000 E			call CheckQuiz
+				
+ 000001D3  B8 00000096		        mov eax, 150
+ 000001D8  E8 00000000 E	        call Delay
+				
+				    ; State 4: getting lab (dino)
+ 000001DD  C6 05 00000000 R	    mov currState, 4
+	   04
+ 000001E4  E8 00000000 E	    call SwitchTimers
+ 000001E9  0F B6 05		    movzx eax, chosenDifficulty
+	   00000000 E
+ 000001F0  E8 00000000 E	    call LoadLab
+ 000001F5  E8 00000000 E	    call DinoInit
+ 000001FA			    getting_lab_loop_start:
+ 000001FA  E8 00000000 E	        call DinoTick
+ 000001FF  E8 00000000 E	        call UpdateScreen
+ 00000204  E8 00000000 E	        call DrawTimers
+ 00000209  E8 00000000 E	        call UpdateTimers
+ 0000020E  B8 00000032		        mov eax, 50
+ 00000213  E8 00000000 E	        call Delay
+				
+				        invoke GetAsyncKeyState, VK_RETURN
+ 0000021F  66| A9 8000		        test ax, 8000h
+ 00000223  74 D5		        jz getting_lab_loop_start
+				
+ 00000225  B8 00000096		        mov eax, 150
+ 0000022A  E8 00000000 E	        call Delay
+				
+				    ; State 5: solving lab
+ 0000022F  C6 05 00000000 R	    mov currState, 5
+	   05
+ 00000236  E8 00000000 E	    call ClearScreen
+ 0000023B  E8 00000000 E	    call DrawBase
+ 00000240  E8 00000000 E	    call DrawLab
+ 00000245  E8 00000000 E	    call DrawTimers
+ 0000024A			    drain_buf_5:
+ 0000024A  E8 00000000 E	        call ReadKey
+ 0000024F  80 FC 00		        cmp ah, 0
+ 00000252  75 F6		        jne drain_buf_5
+ 00000254			    flush_keys_5:
+				        invoke GetAsyncKeyState, VK_RETURN
+ 0000025B  66| A9 8000		        test ax, 8000h
+ 0000025F  75 F3		        jnz flush_keys_5
+ 00000261			    lab_loop_start:
+ 00000261  E8 00000000 E	        call HandleInput
+ 00000266  A2 00000001 R	        mov last_input, al
+ 0000026B  E8 00000000 E			call DrawBase
+ 00000270  E8 00000000 E			Call DrawLab
+ 00000275  E8 00000000 E	        call UpdateTimers
+ 0000027A  B8 00000032		        mov eax, 50
+ 0000027F  E8 00000000 E	        call Delay
+ 00000284  80 3D 00000001 R	        cmp last_input, 0Dh
+	   0D
+ 0000028B  75 D4		        jne lab_loop_start
+				
+ 0000028D  B8 00000096		        mov eax, 150
+ 00000292  E8 00000000 E	        call Delay
+				
+				    ; State 6: turning in lab (dino)
+ 00000297  C6 05 00000000 R	    mov currState, 6
+	   06
+ 0000029E  E8 00000000 E	    call DinoInit
+ 000002A3			    turning_in_lab_loop_start:
+ 000002A3  E8 00000000 E	        call DinoTick
+ 000002A8  E8 00000000 E	        call UpdateScreen
+ 000002AD  E8 00000000 E	        call DrawTimers
+ 000002B2  E8 00000000 E	        call UpdateTimers
+ 000002B7  B8 00000032		        mov eax, 50
+ 000002BC  E8 00000000 E	        call Delay
+				
+				        invoke GetAsyncKeyState, VK_RETURN
+ 000002C8  66| A9 8000		        test ax, 8000h
+ 000002CC  74 D5		        jz turning_in_lab_loop_start
+ 000002CE  E8 00000000 E			call CheckLab
+				
+ 000002D3  B8 00000096		        mov eax, 150
+ 000002D8  E8 00000000 E	        call Delay
+				
+				    ; State 7: game end screen
+ 000002DD  C6 05 00000000 R	    mov currState, 7
+	   07
+ 000002E4  E8 FFFFFD17		    call DrawEndScreen
+ 000002E9  E8 00000000 E		call ReadChar
+ 000002EE  E8 00000000 E		call ReadChar
+ 000002F3  C3			    ret
+ 000002F4			Game ENDP
+				
+				END
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/02/26 00:33:55
+Game.asm						     Symbols 2 - 1
 
 
 
@@ -141,14 +406,17 @@ Segments and Groups:
 
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
-_DATA  . . . . . . . . . . . . .	32 Bit	 00000000 Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 0000001F Para	  Public  'CODE'	
+_DATA  . . . . . . . . . . . . .	32 Bit	 00000029 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 000002F4 Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
 
                 N a m e                 Type     Value    Attr
 
+CheckLab . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+CheckQuiz  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ClearScreen  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CloseFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CloseHandle  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Clrscr . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -156,7 +424,13 @@ CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 CreateOutputFile . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-DrawTimer  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DinoInit . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DinoTick . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DrawBase . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DrawEndScreen  . . . . . . . . .	P Near	 00000000 _TEXT	Length= 000000B4 Public STDCALL
+DrawLab  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DrawQuiz . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DrawTimers . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -164,7 +438,19 @@ FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-Game . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Game . . . . . . . . . . . . . .	P Near	 000000B4 _TEXT	Length= 00000240 Public STDCALL
+  press_enter_loop_start . . . .	L Near	 000000CA _TEXT	
+  getting_quiz_loop_start  . . .	L Near	 000000FA _TEXT	
+  drain_buf_2  . . . . . . . . .	L Near	 0000014A _TEXT	
+  flush_keys_2 . . . . . . . . .	L Near	 00000154 _TEXT	
+  quiz_loop_start  . . . . . . .	L Near	 00000161 _TEXT	
+  turning_in_quiz_loop_start . .	L Near	 000001A3 _TEXT	
+  getting_lab_loop_start . . . .	L Near	 000001FA _TEXT	
+  drain_buf_5  . . . . . . . . .	L Near	 0000024A _TEXT	
+  flush_keys_5 . . . . . . . . .	L Near	 00000254 _TEXT	
+  lab_loop_start . . . . . . . .	L Near	 00000261 _TEXT	
+  turning_in_lab_loop_start  . .	L Near	 000002A3 _TEXT	
+GetAsyncKeyState . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandTail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleCP . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -185,17 +471,16 @@ GetSystemTime  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 GetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetTickCount . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Gotoxy . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+HandleInput  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 HeapAlloc  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 HeapCreate . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 HeapDestroy  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 HeapFree . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 HeapSize . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 IsDigit  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+LoadLab  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+LoadQuiz . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 LocalFree  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-MainMenu . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-Main . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000001F Public STDCALL
-  game_loop  . . . . . . . . . .	L Near	 00000000 _TEXT	
-  procedure_end  . . . . . . . .	L Near	 00000018 _TEXT	
 MessageBoxA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MsgBoxAsk  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MsgBox . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -222,7 +507,6 @@ SetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 SetConsoleCursorPosition . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SetConsoleScreenBufferSize . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-SetConsoleSize . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SetConsoleTextAttribute  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SetConsoleTitleA . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SetConsoleWindowInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -238,6 +522,7 @@ Str_copy . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 Str_length . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_trim . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_ucase  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SwitchTimers . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SystemTimeToFileTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 UpdateScreen . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 UpdateTimers . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -480,10 +765,14 @@ WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
 black  . . . . . . . . . . . . .	Number	 00000000h   
 blue . . . . . . . . . . . . . .	Number	 00000001h   
 brown  . . . . . . . . . . . . .	Number	 00000006h   
+chosenDifficulty . . . . . . . .	Byte	 00000000 FLAT	External STDCALL
+currState  . . . . . . . . . . .	Byte	 00000000 _DATA	Public STDCALL
 cyan . . . . . . . . . . . . . .	Number	 00000003h   
 exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
 gray . . . . . . . . . . . . . .	Number	 00000008h   
 green  . . . . . . . . . . . . .	Number	 00000002h   
+labScore . . . . . . . . . . . .	DWord	 00000000 FLAT	External STDCALL
+last_input . . . . . . . . . . .	Byte	 00000001 _DATA	
 lightBlue  . . . . . . . . . . .	Number	 00000009h   
 lightCyan  . . . . . . . . . . .	Number	 0000000Bh   
 lightGray  . . . . . . . . . . .	Number	 00000007h   
@@ -491,7 +780,13 @@ lightGreen . . . . . . . . . . .	Number	 0000000Ah
 lightMagenta . . . . . . . . . .	Number	 0000000Dh   
 lightRed . . . . . . . . . . . .	Number	 0000000Ch   
 magenta  . . . . . . . . . . . .	Number	 00000005h   
+quizScore  . . . . . . . . . . .	DWord	 00000000 FLAT	External STDCALL
 red  . . . . . . . . . . . . . .	Number	 00000004h   
+scoreLabLabel  . . . . . . . . .	Byte	 0000000A _DATA	
+scoreQuizLabel . . . . . . . . .	Byte	 00000002 _DATA	
+scoreSuffix100 . . . . . . . . .	Byte	 00000024 _DATA	
+scoreSuffix50  . . . . . . . . .	Byte	 00000012 _DATA	
+scoreTotalLabel  . . . . . . . .	Byte	 00000016 _DATA	
 white  . . . . . . . . . . . . .	Number	 0000000Fh   
 wsprintf . . . . . . . . . . . .	Text   	 wsprintfA
 yellow . . . . . . . . . . . . .	Number	 0000000Eh   

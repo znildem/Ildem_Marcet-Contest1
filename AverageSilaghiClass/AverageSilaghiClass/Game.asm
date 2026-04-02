@@ -178,7 +178,6 @@ Game PROC
 
         mov eax, 150
         call Delay
-        call CheckQuiz
 
     ; State 3: turning in quiz (dino)
     mov currState, 3
@@ -194,6 +193,7 @@ Game PROC
         invoke GetAsyncKeyState, VK_RETURN
         test ax, 8000h
         jz turning_in_quiz_loop_start
+		call CheckQuiz
 
         mov eax, 150
         call Delay
@@ -246,7 +246,6 @@ Game PROC
 
         mov eax, 150
         call Delay
-        call CheckLab
 
     ; State 6: turning in lab (dino)
     mov currState, 6
@@ -262,6 +261,7 @@ Game PROC
         invoke GetAsyncKeyState, VK_RETURN
         test ax, 8000h
         jz turning_in_lab_loop_start
+		call CheckLab
 
         mov eax, 150
         call Delay
