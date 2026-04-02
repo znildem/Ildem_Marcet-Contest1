@@ -1,0 +1,5 @@
+2^7=___.
+Our class ends at 10:__am.
+JMP means ____.
+"MOV al, ax" is valid (T/F). _
+The undo command is Ctrl+_.

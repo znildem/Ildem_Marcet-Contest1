@@ -1,0 +1,21 @@
+Hello! Welcome to an average class with Silaghi.
+
+In this game, you will need to get through a class with Silaghi as your
+professor. This means solving a quiz while paying attention to attendance,
+going through a lab while listening to a lecture, and avoiding what obstacles
+may come your way.
+
+The screen is split in two, the left is whatever you're solving (quiz/lab) and
+the right is Silaghi's dialogue. To switch between one screen and the other,
+press TAB. To navigate, use the arrow keys.
+
+Score will be based on how well you solve the quiz and lab, your attendance
+record, and how late you handed in your work.
+
+You will notice there is a timer at the bottom of the screen. This is how much
+time you have left to solve the quiz. It will switch to the lab timer when you
+start it. You'll notice its currently running. That's because you're late to
+class...
+
+If you are still reading this, you're already doing poorly. Press Enter to
+start the quiz you're not going to solve in time. Good luck!

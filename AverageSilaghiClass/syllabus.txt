@@ -1,0 +1,19 @@
+Welcome to the game's syllabus.
+
+If you opened this before pressing start: well done.
+If not, I understand why you're here.
+Just like a Silaghi class, you should go into the game prepared.
+
+The game consists of multiple tasks you must complete.
+Quiz: You must complete a quiz. Select question with arrows, type
+    with keyboard and press enter to complete. You lose points for
+	wrong answers and for turning it in late.
+Lab: Very similar to quiz. Slightly harder but you have more time.
+Fetching/Returning: To get a quiz/lab or to return it, you must dodge
+    your fellow classmates in a dino-style game. Press space to jump.
+	Getting hit results in time loss.
+Attendance: As the class goes on the professor will take attendance.
+    when your name appears, quickly press space-bar or you'll lose
+	points.
+
+Now, go forth my child. Good luck with Silhagi's class, you'll need it...

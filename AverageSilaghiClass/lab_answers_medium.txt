@@ -1,0 +1,5 @@
+gotoxy
+8
+6
+jae
+F
