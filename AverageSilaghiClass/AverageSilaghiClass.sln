@@ -1,0 +1,59 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AverageSilaghiClass", "AverageSilaghiClass\AverageSilaghiClass.vcxproj", "{A3E239CF-C3B4-4B82-9E7B-CE1AF3ADBBC4}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Source Code", "Source Code", "{9DE45171-5003-4EC6-AD5D-D0B6AE18A7EB}"
+	ProjectSection(SolutionItems) = preProject
+		AverageSilaghiClass\Main.asm = AverageSilaghiClass\Main.asm
+		AverageSilaghiClass\MainMenu.asm = AverageSilaghiClass\MainMenu.asm
+		AverageSilaghiClass\Timers.asm = AverageSilaghiClass\Timers.asm
+		AverageSilaghiClass\Util.asm = AverageSilaghiClass\Util.asm
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Other", "Other", "{BB1FE353-D339-48F9-825A-A1E4F33B531B}"
+	ProjectSection(SolutionItems) = preProject
+		AverageSilaghiClass\credits.txt = AverageSilaghiClass\credits.txt
+		AverageSilaghiClass\start_screen.txt = AverageSilaghiClass\start_screen.txt
+		AverageSilaghiClass\syllabus.txt = AverageSilaghiClass\syllabus.txt
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{0A1EAE0D-6513-484A-B207-01D16F40C991}"
+	ProjectSection(SolutionItems) = preProject
+		AverageSilaghiClass\lab_answers_easy.txt = AverageSilaghiClass\lab_answers_easy.txt
+		AverageSilaghiClass\lab_answers_hard.txt = AverageSilaghiClass\lab_answers_hard.txt
+		AverageSilaghiClass\lab_answers_medium.txt = AverageSilaghiClass\lab_answers_medium.txt
+		AverageSilaghiClass\lab_questions_easy.txt = AverageSilaghiClass\lab_questions_easy.txt
+		AverageSilaghiClass\lab_questions_hard.txt = AverageSilaghiClass\lab_questions_hard.txt
+		AverageSilaghiClass\lab_questions_medium.txt = AverageSilaghiClass\lab_questions_medium.txt
+		AverageSilaghiClass\quiz_answers_easy.txt = AverageSilaghiClass\quiz_answers_easy.txt
+		AverageSilaghiClass\quiz_answers_hard.txt = AverageSilaghiClass\quiz_answers_hard.txt
+		AverageSilaghiClass\quiz_answers_medium.txt = AverageSilaghiClass\quiz_answers_medium.txt
+		AverageSilaghiClass\quiz_questions_easy.txt = AverageSilaghiClass\quiz_questions_easy.txt
+		AverageSilaghiClass\quiz_questions_hard.txt = AverageSilaghiClass\quiz_questions_hard.txt
+		AverageSilaghiClass\quiz_questions_medium.txt = AverageSilaghiClass\quiz_questions_medium.txt
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A3E239CF-C3B4-4B82-9E7B-CE1AF3ADBBC4}.Debug|x64.ActiveCfg = Debug|x64
+		{A3E239CF-C3B4-4B82-9E7B-CE1AF3ADBBC4}.Debug|x64.Build.0 = Debug|x64
+		{A3E239CF-C3B4-4B82-9E7B-CE1AF3ADBBC4}.Debug|x86.ActiveCfg = Debug|Win32
+		{A3E239CF-C3B4-4B82-9E7B-CE1AF3ADBBC4}.Debug|x86.Build.0 = Debug|Win32
+		{A3E239CF-C3B4-4B82-9E7B-CE1AF3ADBBC4}.Release|x64.ActiveCfg = Release|x64
+		{A3E239CF-C3B4-4B82-9E7B-CE1AF3ADBBC4}.Release|x64.Build.0 = Release|x64
+		{A3E239CF-C3B4-4B82-9E7B-CE1AF3ADBBC4}.Release|x86.ActiveCfg = Release|Win32
+		{A3E239CF-C3B4-4B82-9E7B-CE1AF3ADBBC4}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,5 @@
+To change cursor position use Irvine's ______.
+A QWORD fits _ BYTEs.
+The Zero flag is in bit position _.
+JNB is equivalent to ___.
+"MOV eip, eax" is valid (T/F) _.

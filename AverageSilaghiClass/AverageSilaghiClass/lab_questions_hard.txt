@@ -1,0 +1,5 @@
+When was masm invented? ____
+The flag in bit position 4 is the ______ flag.
+The ASCII value for " is __.
+The 67th digit of pi is _.
+You will vote for this game in the competition (Y/N). _
