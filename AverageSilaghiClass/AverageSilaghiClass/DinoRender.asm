@@ -35,6 +35,9 @@ cactusLarge4 BYTE " # ## #",0
 cactusLarge5 BYTE " #####",0
 cactusLarge6 BYTE "   ##",0
 
+birdSprite BYTE "  __",0
+birdSprite2 BYTE "<(o )___",0
+
 scoreText BYTE "Score: ",0
 gameOverText BYTE "GAME OVER - press any key",0
 
@@ -64,8 +67,10 @@ DrawDinoGame PROC
 	ret
 
 draw_objects:
-		; Draw cactus
+	; Draw cactus or flying enemy
 	movzx eax, cactusType
+	cmp eax, 2
+	je draw_bird
 	cmp eax, 0
 	je draw_small_cactus
 
@@ -97,6 +102,17 @@ draw_objects:
 	mov edx, OFFSET cactusLarge3
 	call WriteString
 
+	jmp cactus_done
+
+draw_bird:
+	mov eax, cactusX
+	mov dl, al
+	movzx ebx, cactusHeight
+	mov dh, 18
+	sub dh, bl
+	call Gotoxy
+	mov edx, OFFSET birdSprite
+	call WriteString
 	jmp cactus_done
 
 draw_small_cactus:
