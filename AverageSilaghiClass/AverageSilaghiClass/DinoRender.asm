@@ -105,6 +105,7 @@ draw_objects:
 	jmp cactus_done
 
 draw_bird:
+	; Line 1
 	mov eax, cactusX
 	mov dl, al
 	movzx ebx, cactusHeight
@@ -113,9 +114,21 @@ draw_bird:
 	call Gotoxy
 	mov edx, OFFSET birdSprite
 	call WriteString
+	
+	; Line 2
+	mov eax, cactusX
+	mov dl, al
+	movzx ebx, cactusHeight
+	mov dh, 19
+	sub dh, bl
+	call Gotoxy
+	mov edx, OFFSET birdSprite2
+	call WriteString
+
 	jmp cactus_done
 
 draw_small_cactus:
+	; Line 1
 	mov eax, cactusX
 	mov dl, al
 	movzx ebx, cactusHeight
@@ -125,6 +138,7 @@ draw_small_cactus:
 	mov edx, OFFSET cactusSmall1
 	call WriteString
 
+	; Line 2
 	mov eax, cactusX
 	mov dl, al
 	movzx ebx, cactusHeight
@@ -134,6 +148,7 @@ draw_small_cactus:
 	mov edx, OFFSET cactusSmall2
 	call WriteString
 
+	; Line 3
 	mov eax, cactusX
 	mov dl, al
 	movzx ebx, cactusHeight
@@ -142,6 +157,28 @@ draw_small_cactus:
 	call Gotoxy
 	mov edx, OFFSET cactusSmall3
 	call WriteString
+
+	; Line 4
+	mov eax, cactusX
+	mov dl, al
+	movzx ebx, cactusHeight
+	mov dh, 21
+	sub dh, bl
+	call Gotoxy
+	mov edx, OFFSET cactusSmall3
+	call WriteString
+
+	; Line 5
+	mov eax, cactusX
+	mov dl, al
+	movzx ebx, cactusHeight
+	mov dh, 22
+	sub dh, bl
+	call Gotoxy
+	mov edx, OFFSET cactusSmall3
+	call WriteString
+
+	jmp cactus_done
 
 cactus_done:
 
