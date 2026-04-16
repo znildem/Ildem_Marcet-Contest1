@@ -142,6 +142,8 @@ skip_cactus_reset:
 	jl tick_end
 
 	movzx ebx, cactusType
+	cmp ebx, 2
+	je bird_collision
 	cmp ebx, 0
 	je normal_width
 
@@ -149,6 +151,25 @@ skip_cactus_reset:
 	cmp eax, 11
 	jg tick_end
 	jmp check_height
+
+bird_collision: 
+	; Bird X-range: 7-12
+	mov eax, cactusX
+	cmp eax, 7
+	jl tick_end
+	cmp eax, 12
+	jg tick_end
+
+	; Bird Y-range: cactusHeight + 2
+	movzx ebx, cactusHeight
+	add ebx, 2
+	mov ecx, dinoY
+	cmp ecx, ebx
+	jg tick_end
+
+	mov dinoGameOver, 1
+	jmp tick_end
+
 
 normal_width:
 	cmp eax, 10
