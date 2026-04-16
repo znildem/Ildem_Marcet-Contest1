@@ -30,7 +30,7 @@ dinoScore DWORD 0
 ; 1 = collision / game over
 dinoGameOver BYTE 0
 
-; 0 = normal obstacle, 1 = double-width obstacle
+; 0 = small cactus, 1 = large cactus, 2 = flying enemy
 cactusType BYTE 0
 
 ; vertical offset (0 = ground, 1-2 = higher)
