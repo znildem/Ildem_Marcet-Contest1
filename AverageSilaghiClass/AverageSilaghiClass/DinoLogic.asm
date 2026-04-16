@@ -109,15 +109,30 @@ skip_ground_clamp:
 
 skip_speed_increase:
 
-	; random type (0 or 1)
-	mov eax, 2
+	; random type: 0 = small, 1 = large, 2 = flying
+	mov eax, 3
 	call RandomRange
 	mov cactusType, al
+
+	; Random height depends on type
+	movzx eax, cactusType
+	cmp eax, 2
+	je set_flying_height
 
 	; random height (0,1,2)
 	mov eax, 3
 	call RandomRange
 	mov cactusHeight, al
+	jmp done_height
+
+set_flying_height:
+	; flying enemy: height 3..5
+	mov eax, 3
+	call RandomRange
+	add eax, 3
+	mov cactusHeight, al
+
+done_height:
 
 skip_cactus_reset:
 
