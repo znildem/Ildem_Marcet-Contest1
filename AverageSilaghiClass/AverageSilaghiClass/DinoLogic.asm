@@ -19,6 +19,7 @@ EXTERN dinoGameOver:BYTE
 EXTERN cactusType:BYTE
 EXTERN cactusHeight:BYTE
 EXTERN cactusSpeed:SDWORD
+EXTERN birdFrame:BYTE
 
 .code
 
@@ -31,6 +32,7 @@ DinoInit PROC
 	mov cactusType, 0
 	mov cactusHeight, 0
 	mov cactusSpeed, 1
+	mov birdFrame, 0
 	ret
 DinoInit ENDP
 
@@ -87,6 +89,11 @@ skip_ground_clamp:
 	mov eax, cactusX
 	sub eax, cactusSpeed
 	mov cactusX, eax
+
+	; toggle bird animation frame
+	mov al, birdFrame
+	xor al, 1
+	mov birdFrame, al
 
 	; reset cactus and increment score
 	cmp eax, 0

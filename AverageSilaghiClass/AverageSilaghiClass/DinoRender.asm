@@ -11,6 +11,7 @@ EXTERN dinoScore:DWORD
 EXTERN dinoGameOver:BYTE
 EXTERN cactusType:BYTE
 EXTERN cactusHeight:BYTE
+EXTERN birdFrame:BYTE
 
 ; Simple ASCII representations
 dinoSprite1 BYTE "    ",219,219,219,219,0
@@ -37,6 +38,13 @@ cactusLarge6 BYTE "   ##",0
 
 birdSprite BYTE "  __",0
 birdSprite2 BYTE "<(o )___",0
+
+; Animated bird frames
+birdA1 BYTE "  \\_",0
+birdA2 BYTE "<(o )\\_",0
+
+birdB1 BYTE "  /_",0
+birdB2 BYTE "<(o )/",0
 
 scoreText BYTE "Score: ",0
 gameOverText BYTE "GAME OVER - press any key",0
@@ -105,27 +113,56 @@ draw_objects:
 	jmp cactus_done
 
 draw_bird:
-	; Line 1
-	mov eax, cactusX
-	mov dl, al
-	movzx ebx, cactusHeight
-	mov dh, 18
-	sub dh, bl
-	call Gotoxy
-	mov edx, OFFSET birdSprite
-	call WriteString
-	
-	; Line 2
-	mov eax, cactusX
-	mov dl, al
-	movzx ebx, cactusHeight
-	mov dh, 19
-	sub dh, bl
-	call Gotoxy
-	mov edx, OFFSET birdSprite2
-	call WriteString
+    movzx eax, birdFrame
+    cmp eax, 0
+    je draw_bird_A
 
-	jmp cactus_done
+draw_bird_B:
+    ; Frame B line 1
+    mov eax, cactusX
+    mov dl, al
+    movzx ebx, cactusHeight
+    mov dh, 18
+    sub dh, bl
+    call Gotoxy
+    mov edx, OFFSET birdB1
+    call WriteString
+
+    ; Frame B line 2
+    mov eax, cactusX
+    mov dl, al
+    movzx ebx, cactusHeight
+    mov dh, 19
+    sub dh, bl
+    call Gotoxy
+    mov edx, OFFSET birdB2
+    call WriteString
+
+    jmp cactus_done
+
+draw_bird_A:
+    ; Frame A line 1
+    mov eax, cactusX
+    mov dl, al
+    movzx ebx, cactusHeight
+    mov dh, 18
+    sub dh, bl
+    call Gotoxy
+    mov edx, OFFSET birdA1
+    call WriteString
+
+    ; Frame A line 2
+    mov eax, cactusX
+    mov dl, al
+    movzx ebx, cactusHeight
+    mov dh, 19
+    sub dh, bl
+    call Gotoxy
+    mov edx, OFFSET birdA2
+    call WriteString
+
+    jmp cactus_done
+
 
 draw_small_cactus:
 	; Line 1

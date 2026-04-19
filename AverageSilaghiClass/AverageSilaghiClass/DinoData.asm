@@ -11,6 +11,7 @@ PUBLIC dinoGameOver
 PUBLIC cactusType 
 PUBLIC cactusHeight
 PUBLIC cactusSpeed
+PUBLIC birdFrame
 
 ; Dino vertical position
 ; 0 = on ground
@@ -38,5 +39,7 @@ cactusHeight BYTE 0
 
 ; cactus movement speed
 cactusSpeed SDWORD 1
+
+birdFrame BYTE 0
 
 END
