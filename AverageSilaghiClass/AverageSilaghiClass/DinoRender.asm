@@ -49,6 +49,8 @@ birdB2 BYTE "<(o )/",0
 scoreText BYTE "Score: ",0
 gameOverText BYTE "GAME OVER - press any key",0
 
+grassLine BYTE 37 DUP(219),0
+
 .code
 PUBLIC DrawDinoGame
 
@@ -62,6 +64,18 @@ DrawDinoGame PROC
 
 	mov eax, dinoScore
 	call WriteDec
+
+	; Draw green grass line
+	mov eax, green + (black * 16)
+	call SetTextColor
+	mov dh, 21
+	mov dl, 1
+	call Gotoxy
+	mov edx, OFFSET grassLine
+	call WriteString
+
+	mov eax, white + (black * 16)
+	call SetTextColor
 
 	; If game over show message
 	cmp dinoGameOver, 1
