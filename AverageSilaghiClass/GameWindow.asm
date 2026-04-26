@@ -47,6 +47,24 @@ PUBLIC UpdateScreen
 PUBLIC ClearScreen
 PUBLIC DrawBase
 PUBLIC DrawDinoBase
+PUBLIC BufGotoxy
+PUBLIC BufSetTextColor
+
+; Sets the virtual cursor position for buffer writes
+; IN: dh = row, dl = col (same as Irvine Gotoxy)
+BufGotoxy PROC
+    mov bufCursorX, dl
+    mov bufCursorY, dh
+    ret
+BufGotoxy ENDP
+ 
+; Sets the current buffer write color
+; IN: eax = color attribute (same as Irvine SetTextColor)
+BufSetTextColor PROC
+    mov bufColor, al
+    ret
+BufSetTextColor ENDP
+
 
 UpdateScreen PROC
 	.if currState == 0
