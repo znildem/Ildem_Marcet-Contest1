@@ -4,6 +4,10 @@
 INCLUDE Irvine32.inc
 
 FindArrString PROTO
+BufGotoxy PROTO
+BufSetTextColor PROTO
+BufWriteString PROTO
+BufWriteChar PROTO
 
 .data
 ; Last call time
@@ -79,13 +83,13 @@ UpdateTimers PROC
 			mov dh, T_CLASS_POS_Y
 			mov dl, al
 			add dl, T_CLASS_POS_X
-			call Gotoxy
+			call BufGotoxy
 
 			mov edx, OFFSET t_class_text
 			add edx, eax
 			mov eax, white + (black * 16)
-			call SetTextColor
-			call WriteString
+			call BufSetTextColor
+			call BufWriteString
 
 			mov t_class_curr_length, al
 		.endif
@@ -109,13 +113,13 @@ UpdateTimers PROC
 			mov dh, T_LAB_POS_Y
 			mov dl, al
 			add dl, T_LAB_POS_X
-			call Gotoxy
+			call BufGotoxy
 
 			mov edx, OFFSET t_lab_text
 			add edx, eax
 			mov eax, white + (black * 16)
-			call SetTextColor
-			call WriteString
+			call BufSetTextColor
+			call BufWriteString
 
 			mov t_lab_curr_length, al
 		.endif
@@ -138,13 +142,13 @@ DrawTimers PROC
 
 	mov dh, 24
 	mov dl, 0
-	call Gotoxy
+	call BufGotoxy
 
 	mov eax, black + (white * 16)
-	call SetTextColor
+	call BufSetTextColor
 
 	mov edx, OFFSET t_class_text
-	call WriteString
+	call BufWriteString
 	.else
 	mov eax, timer_lab
 	mov ebx, T_LAB_CHAR_LENGTH
@@ -156,13 +160,13 @@ DrawTimers PROC
 
 	mov dh, 24
 	mov dl, 0
-	call Gotoxy
+	call BufGotoxy
 
 	mov eax, black + (white * 16)
-	call SetTextColor
+	call BufSetTextColor
 
 	mov edx, OFFSET t_lab_text
-	call WriteString
+	call BufWriteString
 	.endif
 
 	ret
