@@ -230,27 +230,27 @@ UpdateScreen PROC
 		call StartScreen
 
 	.elseif currState == 1
-		call ClearScreen
+		call BufClearScreen
 		call DrawDinoBase
 		call DrawDinoGame
 
 	.elseif currState == 3
-		call ClearScreen
+		call BufClearScreen
 		call DrawDinoBase
 		call DrawDinoGame
 
 	.elseif currState == 4
-		call ClearScreen
+		call BufClearScreen
 		call DrawDinoBase
 		call DrawDinoGame
 
 	.elseif currState == 6
-		call ClearScreen
+		call BufClearScreen
 		call DrawDinoBase
 		call DrawDinoGame
 
 	.else
-		call ClearScreen
+		call BufClearScreen
 		call DrawBase
 
 		.if currState == 2
@@ -265,14 +265,14 @@ UpdateScreen ENDP
 
 DrawDinoBase PROC
 	mov eax, gray + (black * 16)
-	call SetTextColor
+	call BufSetTextColor
 
 	; top border
 	mov dh, 0
 	mov dl, 0
-	call Gotoxy
+	call BufGotoxy
 	mov edx, OFFSET hBorderLeft
-	call WriteString
+	call BufWriteString
 
 	; side borders
 	mov cl, 0
@@ -280,9 +280,9 @@ dino_border_loop_start:
 	mov dh, cl
 	add dh, 1
 	mov dl, 0
-	call Gotoxy
+	call BufGotoxy
 	mov edx, OFFSET vBorderLeft
-	call WriteString
+	call BufWriteString
 
 	inc cl
 	.if cl < 22
@@ -292,30 +292,30 @@ dino_border_loop_start:
 	; bottom border
 	mov dh, 23
 	mov dl, 0
-	call Gotoxy
+	call BufGotoxy
 	mov edx, OFFSET hBorderLeft
-	call WriteString
+	call BufWriteString
 
 	ret
 DrawDinoBase ENDP
 
 ClearScreen PROC
 	mov eax, white + (black * 16)
-	call SetTextColor
-	call Clrscr
+	call BufSetTextColor
+	call BufClearScreen
 ClearScreen ENDP
 
 DrawBase PROC
 	; Adding borders
 	mov eax, gray + (black * 16)
-	call SetTextColor
+	call BufSetTextColor
 
 	; Adding top border
 	mov dh, 0
 	mov dl, 0
-	call Gotoxy
+	call BufGotoxy
 	mov edx, OFFSET hBorder
-	call WriteString
+	call BufWriteString
 
 	; Adding vertical borders
 	mov cl, 0
@@ -324,9 +324,9 @@ DrawBase PROC
 		add dh, 1
 
 		mov dl, 0
-		call Gotoxy
+		call BufGotoxy
 		mov edx, OFFSET vBorder
-		call WriteString
+		call BufWriteString
 
 		inc cl
 		.if cl < 22
@@ -336,9 +336,9 @@ DrawBase PROC
 	; Adding bottom border
 	mov dh, 23
 	mov dl, 0
-	call Gotoxy
+	call BufGotoxy
 	mov edx, OFFSET hBorder
-	call WriteString
+	call BufWriteString
 
 	ret
 DrawBase ENDP
@@ -358,10 +358,10 @@ StartScreen PROC
 
 	; Write start screen stuff
 	mov eax, white + (black * 16)
-	call SetTextColor
-	call Clrscr
+	call BufSetTextColor
+	call BufClearScreen
 	mov edx, OFFSET scBuffer
-	call WriteString
+	call BufWriteString
 
 	ret
 StartScreen ENDP

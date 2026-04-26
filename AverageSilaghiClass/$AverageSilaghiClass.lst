@@ -1,9 +1,8 @@
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/26/26 16:13:07
-Timers.asm						     Page 1 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/26/26 16:16:51
+GameWindow.asm						     Page 1 - 1
 
 
-				; Timers handling will be done in this file
-				; This does NOT handle midnight change, just dont play at midnight : P
+				; This will handle the displaying of the game window
 
 				INCLUDE Irvine32.inc
 			      C ; Include file for Irvine32.lib             (Irvine32.inc)
@@ -24,269 +23,436 @@ Timers.asm						     Page 1 - 1
 			      C .LIST
 			      C 
 
-				FindArrString PROTO
-				BufGotoxy PROTO
-				BufSetTextColor PROTO
-				BufWriteString PROTO
-				BufWriteChar PROTO
+				DrawDinoGame PROTO
+				WriteConsoleOutputA PROTO, \
+				    hConsoleOutput:DWORD, \
+				    lpBuffer:PTR BYTE, \
+				    dwBufferSize:DWORD, \
+				    dwBufferCoord:DWORD, \
+				    lpWriteRegion:PTR BYTE
 
  00000000			.data
-				; Last call time
- 00000000 00000000		prev_time DWORD ?
- 00000004 00000000		curr_time DWORD ?
+				; Screen buffer : 80x25 cells, 2 bytes each(char + attribute)
+ = 00000050			SCREEN_WIDTH = 80
+ = 00000019			SCREEN_HEIGHT = 25
+ = 00000FA0			SCREEN_BUF_SIZE = SCREEN_WIDTH * SCREEN_HEIGHT * 2
+ 00000000  00000FA0 [		screenBuffer BYTE SCREEN_BUF_SIZE DUP(0)
+	    00
+	   ]
 
-				; Timer for the quiz duration
- = 0000C350			T_CLASS_INITIAL = 50000; 50 seconds in ms
- = 00000050			T_CLASS_CHAR_LENGTH = 80
- = 00000000			T_CLASS_POS_X = 0
- = 00000018			T_CLASS_POS_Y = 24
- 00000008 00000000		timer_class DWORD ?
- 0000000C 51 55 49 5A 20	t_class_text BYTE "QUIZ DEADLINE                                                                   ", 0
-	   44 45 41 44 4C
-	   49 4E 45 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   00
- 0000005D 00			t_class_curr_length BYTE ?
+				; Current virtual cursor position and color for buffer writes
+ 00000FA0 00			bufCursorX      BYTE 0
+ 00000FA1 00			bufCursorY      BYTE 0
+ 00000FA2 0F			bufColor        BYTE(white + (black * 16))
 
-				; Timer for the lab duration
- = 0000C350			T_LAB_INITIAL = 50000; 50 seconds in ms
- = 00000050			T_LAB_CHAR_LENGTH = 80
- = 00000000			T_LAB_POS_X = 0
- = 00000018			T_LAB_POS_Y = 24
- 0000005E 00000000		timer_lab DWORD ?
- 00000062 4C 41 42 20 44	t_lab_text BYTE "LAB DEADLINE                                                                    ", 0
-	   45 41 44 4C 49
-	   4E 45 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   00
- 000000B3 00			t_lab_curr_length BYTE ?
 
- 000000B4 00			curr_timer BYTE 0
+				; WriteConsoleOutput structures
+ 00000FA3 0050			wcoBufSize      WORD SCREEN_WIDTH; buffer width
+ 00000FA5  0019			WORD SCREEN_HEIGHT; buffer height
+ 00000FA7 0000			wcoBufCoord     WORD 0; top - left of buffer to read(x)
+ 00000FA9  0000			WORD 0; top - left of buffer to read(y)
+ 00000FAB 0000			wcoWriteRegion  WORD 0; left
+ 00000FAD  0000			WORD 0; top
+ 00000FAF  004F			WORD SCREEN_WIDTH - 1; right
+ 00000FB1  0018			WORD SCREEN_HEIGHT - 1; bottom
+
+
+
+ 00000FB3 2B 2D 2D 2D 2D	hBorder BYTE "+-------------------------------------++-------------------------------------+", 0
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2B 2B
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2B 00
+ 00001002 7C 20 20 20 20	vBorder BYTE "|                                     ||                                     |", 0
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 7C 7C
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 7C 00
+ 00001051 2B 2D 2D 2D 2D	hBorderLeft BYTE "+-------------------------------------+", 0
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2D 2D
+	   2D 2D 2D 2B 00
+ 00001079 7C 20 20 20 20	vBorderLeft BYTE "|                                     |", 0
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 7C 00
+
+				; Start screen information
+ 000010A1 73 74 61 72 74	scTextFile BYTE "start_screen.txt", 0
+	   5F 73 63 72 65
+	   65 6E 2E 74 78
+	   74 00
+ = 000007D0			SC_BUFFER_SIZE = 2000
+ 000010B2			scBuffer BYTE SC_BUFFER_SIZE DUP(?)
+
+				; External variables
+				EXTERN currState:BYTE
 
  00000000			.code
-				PUBLIC UpdateTimers
-				PUBLIC StartTimers
-				PUBLIC SwitchTimers
-				PUBLIC DrawTimers
-				PUBLIC GetPenalty
-				PUBLIC ApplyDinoPenalty
+				PUBLIC UpdateScreen
+				PUBLIC ClearScreen
+				PUBLIC DrawBase
+				PUBLIC DrawDinoBase
+				PUBLIC BufGotoxy
+				PUBLIC BufSetTextColor
+				PUBLIC BufWriteString
+				PUBLIC BufWriteChar
+				PUBLIC BufClearScreen
+				PUBLIC FlushScreenBuffer
 
- 00000000			StartTimers PROC
- 00000000  E8 00000000 E		call GetMseconds
- 00000005  A3 00000000 R		mov prev_time, eax
+				; Sets the virtual cursor position for buffer writes
+				; IN: dh = row, dl = col (same as Irvine Gotoxy)
+ 00000000			BufGotoxy PROC
+ 00000000  88 15 00000FA0 R	    mov bufCursorX, dl
+ 00000006  88 35 00000FA1 R	    mov bufCursorY, dh
+ 0000000C  C3			    ret
+ 0000000D			BufGotoxy ENDP
+				 
+				; Sets the current buffer write color
+				; IN: eax = color attribute (same as Irvine SetTextColor)
+ 0000000D			BufSetTextColor PROC
+ 0000000D  A2 00000FA2 R	    mov bufColor, al
+ 00000012  C3			    ret
+ 00000013			BufSetTextColor ENDP
 
-					.if curr_timer == 0
- 00000013  C7 05 00000008 R			mov timer_class, T_CLASS_INITIAL
-	   0000C350
- 0000001D  C6 05 0000005D R			mov t_class_curr_length, T_CLASS_CHAR_LENGTH
+				; Writes a null-terminated string into screenBuffer at current cursor pos
+				; IN: edx = string address (same as Irvine WriteString)
+				; Advances bufCursorX after each char, wraps to next row on overflow
+ 00000013			BufWriteString PROC
+ 00000013  50			    push eax
+ 00000014  53			    push ebx
+ 00000015  51			    push ecx
+ 00000016  52			    push edx
+ 00000017  56			    push esi
+				 
+ 00000018  8B F2		    mov esi, edx            ; esi = string pointer
+ 0000001A  B9 00000000		    mov ecx, 0              ; char index
+				 
+ 0000001F			    bws_loop:
+ 0000001F  8A 04 31		        mov al, BYTE PTR [esi + ecx]
+ 00000022  3C 00		        cmp al, 0
+ 00000024  74 4D		        je bws_done
+				 
+				        ; buffer offset = (row * SCREEN_WIDTH + col) * 2
+ 00000026  0F B6 05		        movzx eax, bufCursorY
+	   00000FA1 R
+ 0000002D  BB 00000050		        mov ebx, SCREEN_WIDTH
+ 00000032  F7 E3		        mul ebx                     ; eax = row * SCREEN_WIDTH
+ 00000034  0F B6 1D		        movzx ebx, bufCursorX
+	   00000FA0 R
+ 0000003B  03 C3		        add eax, ebx               ; eax = row * SCREEN_WIDTH + col
+ 0000003D  D1 E0		        shl eax, 1                 ; eax = offset in bytes (* 2)
+				 
+ 0000003F  8A 1C 31		        mov bl, BYTE PTR [esi + ecx]
+ 00000042  88 98 00000000 R	        mov BYTE PTR screenBuffer[eax], bl      ; char byte
+ 00000048  8A 1D 00000FA2 R	        mov bl, bufColor
+ 0000004E  88 98 00000001 R	        mov BYTE PTR screenBuffer[eax + 1], bl  ; attribute byte
+				 
+				        ; advance cursor
+ 00000054  FE 05 00000FA0 R	        inc bufCursorX
+ 0000005A  80 3D 00000FA0 R	        cmp bufCursorX, SCREEN_WIDTH
 	   50
-					.else
- 00000026  C7 05 0000005E R			mov timer_lab, T_LAB_INITIAL
-	   0000C350
- 00000030  C6 05 000000B3 R			mov t_lab_curr_length, T_LAB_CHAR_LENGTH
+ 00000061  7C 0D		        jl bws_next
+ 00000063  C6 05 00000FA0 R	        mov bufCursorX, 0
+	   00
+ 0000006A  FE 05 00000FA1 R	        inc bufCursorY
+				 
+ 00000070			        bws_next:
+ 00000070  41			        inc ecx
+ 00000071  EB AC		        jmp bws_loop
+				 
+ 00000073			    bws_done:
+ 00000073  5E			    pop esi
+ 00000074  5A			    pop edx
+ 00000075  59			    pop ecx
+ 00000076  5B			    pop ebx
+ 00000077  58			    pop eax
+ 00000078  C3			    ret
+ 00000079			BufWriteString ENDP
+
+				; Writes a single character into screenBuffer at current cursor pos
+				; IN: al = character (same as Irvine WriteChar)
+ 00000079			BufWriteChar PROC
+ 00000079  50			    push eax
+ 0000007A  53			    push ebx
+				 
+ 0000007B  0F B6 05		    movzx eax, bufCursorY
+	   00000FA1 R
+ 00000082  BB 00000050		    mov ebx, SCREEN_WIDTH
+ 00000087  F7 E3		    mul ebx
+ 00000089  0F B6 1D		    movzx ebx, bufCursorX
+	   00000FA0 R
+ 00000090  03 C3		    add eax, ebx
+ 00000092  D1 E0		    shl eax, 1
+				 
+ 00000094  8A D8		    mov bl, al
+				    ; al was clobbered by mul - get char back from bl after push
+				    ; actually al is clobbered - save char in bh first
+ 00000096  5B			    pop ebx                     ; restore ebx (was pushed)
+ 00000097  58			    pop eax                     ; restore eax (original al = char)
+ 00000098  50			    push eax
+ 00000099  53			    push ebx
+				 
+				    ; recalculate offset with char saved
+ 0000009A  50			    push eax                    ; save char
+ 0000009B  0F B6 05		    movzx eax, bufCursorY
+	   00000FA1 R
+ 000000A2  BB 00000050		    mov ebx, SCREEN_WIDTH
+ 000000A7  F7 E3		    mul ebx
+ 000000A9  0F B6 1D		    movzx ebx, bufCursorX
+	   00000FA0 R
+ 000000B0  03 C3		    add eax, ebx
+ 000000B2  D1 E0		    shl eax, 1                  ; eax = byte offset
+				 
+ 000000B4  5B			    pop ebx                     ; ebx = char (was in al originally)
+ 000000B5  88 98 00000000 R	    mov BYTE PTR screenBuffer[eax], bl
+ 000000BB  8A 1D 00000FA2 R	    mov bl, bufColor
+ 000000C1  88 98 00000001 R	    mov BYTE PTR screenBuffer[eax + 1], bl
+				 
+ 000000C7  FE 05 00000FA0 R	    inc bufCursorX
+ 000000CD  80 3D 00000FA0 R	    cmp bufCursorX, SCREEN_WIDTH
 	   50
-					.endif
-
- 00000037  E8 000000FD			call DrawTimers
-
- 0000003C  C3				ret
- 0000003D			StartTimers ENDP
-
- 0000003D			UpdateTimers PROC
- 0000003D  E8 00000000 E		call GetMseconds
- 00000042  A3 00000004 R		mov curr_time, eax
-
-					.if curr_timer == 0
- 00000050  A1 00000008 R			mov eax, timer_class
- 00000055  2B 05 00000004 R			sub eax, curr_time
- 0000005B  03 05 00000000 R			add eax, prev_time
- 00000061  A3 00000008 R			mov timer_class, eax
- 00000066  BB 00000050				mov ebx, T_CLASS_CHAR_LENGTH
- 0000006B  F7 E3				mul ebx
- 0000006D  BA 00000000				mov edx, 0
- 00000072  BB 0000C350				mov ebx, T_CLASS_INITIAL
- 00000077  F7 F3				div ebx; Now eax holds the number of spaces that should be filled for the timer
-						.if eax > T_CLASS_CHAR_LENGTH
- 0000007E  B8 00000050					mov eax, T_CLASS_CHAR_LENGTH
-						.endif
-						.if eax < 0
- 00000088  B8 00000000					mov eax, 0
-						.endif
-						.if al != t_class_curr_length
- 00000099  B6 18					mov dh, T_CLASS_POS_Y
- 0000009B  8A D0					mov dl, al
- 0000009D  80 C2 00					add dl, T_CLASS_POS_X
- 000000A0  E8 00000000 E				call BufGotoxy
-
- 000000A5  BA 0000000C R				mov edx, OFFSET t_class_text
- 000000AA  03 D0					add edx, eax
- 000000AC  B8 0000000F					mov eax, white + (black * 16)
- 000000B1  E8 00000000 E				call BufSetTextColor
- 000000B6  E8 00000000 E				call BufWriteString
-
- 000000BB  A2 0000005D R				mov t_class_curr_length, al
-						.endif
-					.else
- 000000C2  A1 0000005E R			mov eax, timer_lab
- 000000C7  2B 05 00000004 R			sub eax, curr_time
- 000000CD  03 05 00000000 R			add eax, prev_time
- 000000D3  A3 0000005E R			mov timer_lab, eax
- 000000D8  BB 00000050				mov ebx, T_LAB_CHAR_LENGTH
- 000000DD  F7 E3				mul ebx
- 000000DF  BA 00000000				mov edx, 0
- 000000E4  BB 0000C350				mov ebx, T_LAB_INITIAL
- 000000E9  F7 F3				div ebx; Now eax holds the number of spaces that should be filled for the timer
-						.if eax > T_LAB_CHAR_LENGTH
- 000000F0  B8 00000050					mov eax, T_LAB_CHAR_LENGTH
-						.endif
-						.if eax < 0
- 000000FA  B8 00000000					mov eax, 0
-						.endif
-						.if al != t_lab_curr_length
- 00000107  B6 18					mov dh, T_LAB_POS_Y
- 00000109  8A D0					mov dl, al
- 0000010B  80 C2 00					add dl, T_LAB_POS_X
- 0000010E  E8 00000000 E				call BufGotoxy
-
- 00000113  BA 00000062 R				mov edx, OFFSET t_lab_text
- 00000118  03 D0					add edx, eax
- 0000011A  B8 0000000F					mov eax, white + (black * 16)
- 0000011F  E8 00000000 E				call BufSetTextColor
- 00000124  E8 00000000 E				call BufWriteString
-
- 00000129  A2 000000B3 R				mov t_lab_curr_length, al
-						.endif
-					.endif
-
- 0000012E  A1 00000004 R		mov eax, curr_time
- 00000133  A3 00000000 R		mov prev_time, eax
- 00000138  C3				ret
- 00000139			UpdateTimers ENDP
-
- 00000139			DrawTimers PROC
-					.if curr_timer == 0
- 00000142  A1 00000008 R		mov eax, timer_class
- 00000147  BB 00000050			mov ebx, T_CLASS_CHAR_LENGTH
- 0000014C  F7 E3			mul ebx
- 0000014E  BA 00000000			mov edx, 0
- 00000153  BB 0000C350			mov ebx, T_CLASS_INITIAL
- 00000158  F7 F3			div ebx
-					; Now eax holds the number of spaces that should be filled for the timer
-
- 0000015A  B6 18			mov dh, 24
- 0000015C  B2 00			mov dl, 0
- 0000015E  E8 00000000 E		call BufGotoxy
-
- 00000163  B8 000000F0			mov eax, black + (white * 16)
- 00000168  E8 00000000 E		call BufSetTextColor
-
- 0000016D  BA 0000000C R		mov edx, OFFSET t_class_text
- 00000172  E8 00000000 E		call BufWriteString
-					.else
- 00000179  A1 0000005E R		mov eax, timer_lab
- 0000017E  BB 00000050			mov ebx, T_LAB_CHAR_LENGTH
- 00000183  F7 E3			mul ebx
- 00000185  BA 00000000			mov edx, 0
- 0000018A  BB 0000C350			mov ebx, T_LAB_INITIAL
- 0000018F  F7 F3			div ebx
-					; Now eax holds the number of spaces that should be filled for the timer
-
- 00000191  B6 18			mov dh, 24
- 00000193  B2 00			mov dl, 0
- 00000195  E8 00000000 E		call BufGotoxy
-
- 0000019A  B8 000000F0			mov eax, black + (white * 16)
- 0000019F  E8 00000000 E		call BufSetTextColor
-
- 000001A4  BA 00000062 R		mov edx, OFFSET t_lab_text
- 000001A9  E8 00000000 E		call BufWriteString
-					.endif
-
- 000001AE  C3				ret
- 000001AF			DrawTimers ENDP
-
- 000001AF			GetPenalty PROC
-					.if curr_timer == 0
- 000001B8  A1 00000008 R			mov eax, timer_class
-					.else
- 000001BF  A1 0000005E R			mov eax, timer_lab
-					.endif
- 000001C4  83 F8 00		 	cmp eax, 0
- 000001C7  7C 05			jl penalty_applies
- 000001C9  B8 00000000			mov eax, 0
- 000001CE				penalty_applies:
- 000001CE  F7 D8			neg eax
- 000001D0  BA 00000000			mov edx, 0
- 000001D5  BB 000003E8			mov ebx, 1000
- 000001DA  F7 F3			div ebx
- 000001DC				done:
- 000001DC  C3				ret
- 000001DD			GetPenalty ENDP
-
- 000001DD			SwitchTimers PROC
- 000001DD  C6 05 000000B4 R		mov curr_timer, 1
-	   01
- 000001E4  E8 FFFFFE17			call StartTimers
- 000001E9  C3				ret
- 000001EA			SwitchTimers ENDP
-
- 000001EA			ApplyDinoPenalty PROC
-				    ; subtract 5000 ms
- 000001EA  80 3D 000000B4 R	    cmp curr_timer, 0
+ 000000D4  7C 0D		    jl bwc_done
+ 000000D6  C6 05 00000FA0 R	    mov bufCursorX, 0
 	   00
- 000001F1  74 1F		    je apply_to_quiz
+ 000000DD  FE 05 00000FA1 R	    inc bufCursorY
+				 
+ 000000E3			    bwc_done:
+ 000000E3  5B			    pop ebx
+ 000000E4  58			    pop eax
+ 000000E5  C3			    ret
+ 000000E6			BufWriteChar ENDP
 
-				    ; apply to lab timer
- 000001F3  81 2D 0000005E R	    sub timer_lab, 5000
-	   00001388
- 000001FD  83 3D 0000005E R	    cmp timer_lab, 0
+				; Clears screenBuffer to spaces with current color
+ 000000E6			BufClearScreen PROC
+ 000000E6  50			    push eax
+ 000000E7  51			    push ecx
+ 000000E8  57			    push edi
+				 
+ 000000E9  B9 00000000		    mov ecx, 0
+ 000000EE			    bcs_loop:
+ 000000EE  81 F9 00000FA0	        cmp ecx, SCREEN_BUF_SIZE
+ 000000F4  7D 17		        jge bcs_done
+ 000000F6  C6 81 00000000 R	        mov BYTE PTR screenBuffer[ecx], ' '
+	   20
+ 000000FD  A0 00000FA2 R	        mov al, bufColor
+ 00000102  88 81 00000001 R	        mov BYTE PTR screenBuffer[ecx + 1], al
+ 00000108  83 C1 02		        add ecx, 2
+ 0000010B  EB E1		        jmp bcs_loop
+ 0000010D			    bcs_done:
+				 
+ 0000010D  C6 05 00000FA0 R	    mov bufCursorX, 0
 	   00
- 00000204  7D 29		    jge done
- 00000206  C7 05 0000005E R	    mov timer_lab, 0
-	   00000000
- 00000210  EB 1D		    jmp done
-
- 00000212			apply_to_quiz:
- 00000212  81 2D 00000008 R	    sub timer_class, 5000
-	   00001388
- 0000021C  83 3D 00000008 R	    cmp timer_class, 0
+ 00000114  C6 05 00000FA1 R	    mov bufCursorY, 0
 	   00
- 00000223  7D 0A		    jge done
- 00000225  C7 05 00000008 R	    mov timer_class, 0
-	   00000000
+				 
+ 0000011B  5F			    pop edi
+ 0000011C  59			    pop ecx
+ 0000011D  58			    pop eax
+ 0000011E  C3			    ret
+ 0000011F			BufClearScreen ENDP
 
- 0000022F			done:
- 0000022F  C3			    ret
- 00000230			ApplyDinoPenalty ENDP
+ 0000011F			FlushScreenBuffer PROC
+ 0000011F  50			    push eax
+ 00000120  53			    push ebx
+ 00000121  51			    push ecx
+ 00000122  52			    push edx
+ 00000123  56			    push esi
+				
+ 00000124  6A F5		    push -11
+ 00000126  E8 00000000 E	    call GetStdHandle       ; eax = console handle
+				
+				    invoke WriteConsoleOutputA, \
+				        eax, \
+				        ADDR screenBuffer, \
+				        DWORD PTR wcoBufSize, \
+				        DWORD PTR wcoBufCoord, \
+				        ADDR wcoWriteRegion
+				
+ 00000147  5E			    pop esi
+ 00000148  5A			    pop edx
+ 00000149  59			    pop ecx
+ 0000014A  5B			    pop ebx
+ 0000014B  58			    pop eax
+ 0000014C  C3			    ret
+ 0000014D			FlushScreenBuffer ENDP
 
+
+ 0000014D			UpdateScreen PROC
+					.if currState == 0
+ 00000156  E8 0000013F				call StartScreen
+
+					.elseif currState == 1
+ 00000169  E8 FFFFFF78				call BufClearScreen
+ 0000016E  E8 00000074				call DrawDinoBase
+ 00000173  E8 00000000 E			call DrawDinoGame
+
+					.elseif currState == 3
+ 00000183  E8 FFFFFF5E				call BufClearScreen
+ 00000188  E8 0000005A				call DrawDinoBase
+ 0000018D  E8 00000000 E			call DrawDinoGame
+
+					.elseif currState == 4
+ 0000019D  E8 FFFFFF44				call BufClearScreen
+ 000001A2  E8 00000040				call DrawDinoBase
+ 000001A7  E8 00000000 E			call DrawDinoGame
+
+					.elseif currState == 6
+ 000001B7  E8 FFFFFF2A				call BufClearScreen
+ 000001BC  E8 00000026				call DrawDinoBase
+ 000001C1  E8 00000000 E			call DrawDinoGame
+
+					.else
+ 000001C8  E8 FFFFFF19				call BufClearScreen
+ 000001CD  E8 00000076				call DrawBase
+
+						.if currState == 2
+							; quiz screen
+						.elseif currState == 5
+							; lab screen
+						.endif
+					.endif
+
+ 000001E6  C3				ret
+ 000001E7			UpdateScreen ENDP
+
+ 000001E7			DrawDinoBase PROC
+ 000001E7  B8 00000008			mov eax, gray + (black * 16)
+ 000001EC  E8 FFFFFE1C			call BufSetTextColor
+
+					; top border
+ 000001F1  B6 00			mov dh, 0
+ 000001F3  B2 00			mov dl, 0
+ 000001F5  E8 FFFFFE06			call BufGotoxy
+ 000001FA  BA 00001051 R		mov edx, OFFSET hBorderLeft
+ 000001FF  E8 FFFFFE0F			call BufWriteString
+
+					; side borders
+ 00000204  B1 00			mov cl, 0
+ 00000206			dino_border_loop_start:
+ 00000206  8A F1			mov dh, cl
+ 00000208  80 C6 01			add dh, 1
+ 0000020B  B2 00			mov dl, 0
+ 0000020D  E8 FFFFFDEE			call BufGotoxy
+ 00000212  BA 00001079 R		mov edx, OFFSET vBorderLeft
+ 00000217  E8 FFFFFDF7			call BufWriteString
+
+ 0000021C  FE C1			inc cl
+					.if cl < 22
+ 00000223  EB E1				jmp dino_border_loop_start
+					.endif
+
+					; bottom border
+ 00000225  B6 17			mov dh, 23
+ 00000227  B2 00			mov dl, 0
+ 00000229  E8 FFFFFDD2			call BufGotoxy
+ 0000022E  BA 00001051 R		mov edx, OFFSET hBorderLeft
+ 00000233  E8 FFFFFDDB			call BufWriteString
+
+ 00000238  C3				ret
+ 00000239			DrawDinoBase ENDP
+
+ 00000239			ClearScreen PROC
+ 00000239  B8 0000000F			mov eax, white + (black * 16)
+ 0000023E  E8 FFFFFDCA			call BufSetTextColor
+ 00000243  E8 FFFFFE9E			call BufClearScreen
+ 00000248			ClearScreen ENDP
+
+ 00000248			DrawBase PROC
+					; Adding borders
+ 00000248  B8 00000008			mov eax, gray + (black * 16)
+ 0000024D  E8 FFFFFDBB			call BufSetTextColor
+
+					; Adding top border
+ 00000252  B6 00			mov dh, 0
+ 00000254  B2 00			mov dl, 0
+ 00000256  E8 FFFFFDA5			call BufGotoxy
+ 0000025B  BA 00000FB3 R		mov edx, OFFSET hBorder
+ 00000260  E8 FFFFFDAE			call BufWriteString
+
+					; Adding vertical borders
+ 00000265  B1 00			mov cl, 0
+ 00000267				vBorder_loop_start:
+ 00000267  8A F1				mov dh, cl
+ 00000269  80 C6 01				add dh, 1
+
+ 0000026C  B2 00				mov dl, 0
+ 0000026E  E8 FFFFFD8D				call BufGotoxy
+ 00000273  BA 00001002 R			mov edx, OFFSET vBorder
+ 00000278  E8 FFFFFD96				call BufWriteString
+
+ 0000027D  FE C1				inc cl
+						.if cl < 22
+ 00000284  EB E1					jmp vBorder_loop_start
+						.endif
+
+					; Adding bottom border
+ 00000286  B6 17			mov dh, 23
+ 00000288  B2 00			mov dl, 0
+ 0000028A  E8 FFFFFD71			call BufGotoxy
+ 0000028F  BA 00000FB3 R		mov edx, OFFSET hBorder
+ 00000294  E8 FFFFFD7A			call BufWriteString
+
+ 00000299  C3				ret
+ 0000029A			DrawBase ENDP
+
+ 0000029A			StartScreen PROC
+					; Open file
+ 0000029A  BA 000010A1 R		mov edx, OFFSET scTextFile
+ 0000029F  E8 00000000 E		call OpenInputFile        ; EAX = file handle
+
+					; Read file
+ 000002A4  BA 000010B2 R		mov edx, OFFSET scBuffer
+ 000002A9  B9 000007CF			mov ecx, SC_BUFFER_SIZE - 1
+ 000002AE  E8 00000000 E		call ReadFromFile         ; EAX = bytes read
+
+					; Null-terminate buffer
+ 000002B3  C6 80 000010B2 R		mov BYTE PTR [scBuffer + eax], 0
+	   00
+
+					; Write start screen stuff
+ 000002BA  B8 0000000F			mov eax, white + (black * 16)
+ 000002BF  E8 FFFFFD49			call BufSetTextColor
+ 000002C4  E8 FFFFFE1D			call BufClearScreen
+ 000002C9  BA 000010B2 R		mov edx, OFFSET scBuffer
+ 000002CE  E8 FFFFFD40			call BufWriteString
+
+ 000002D3  C3				ret
+ 000002D4			StartScreen ENDP
 
 				END
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/26/26 16:13:07
-Timers.asm						     Symbols 2 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/26/26 16:16:51
+GameWindow.asm						     Symbols 2 - 1
 
 
 
@@ -379,21 +545,26 @@ Segments and Groups:
 
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
-_DATA  . . . . . . . . . . . . .	32 Bit	 000000B5 Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 00000230 Para	  Public  'CODE'	
+_DATA  . . . . . . . . . . . . .	32 Bit	 00001882 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 000002D4 Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
 
                 N a m e                 Type     Value    Attr
 
-ApplyDinoPenalty . . . . . . . .	P Near	 000001EA _TEXT	Length= 00000046 Public STDCALL
-  apply_to_quiz  . . . . . . . .	L Near	 00000212 _TEXT	
-  done . . . . . . . . . . . . .	L Near	 0000022F _TEXT	
-BufGotoxy  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-BufSetTextColor  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-BufWriteChar . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-BufWriteString . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+BufClearScreen . . . . . . . . .	P Near	 000000E6 _TEXT	Length= 00000039 Public STDCALL
+  bcs_loop . . . . . . . . . . .	L Near	 000000EE _TEXT	
+  bcs_done . . . . . . . . . . .	L Near	 0000010D _TEXT	
+BufGotoxy  . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000000D Public STDCALL
+BufSetTextColor  . . . . . . . .	P Near	 0000000D _TEXT	Length= 00000006 Public STDCALL
+BufWriteChar . . . . . . . . . .	P Near	 00000079 _TEXT	Length= 0000006D Public STDCALL
+  bwc_done . . . . . . . . . . .	L Near	 000000E3 _TEXT	
+BufWriteString . . . . . . . . .	P Near	 00000013 _TEXT	Length= 00000066 Public STDCALL
+  bws_loop . . . . . . . . . . .	L Near	 0000001F _TEXT	
+  bws_next . . . . . . . . . . .	L Near	 00000070 _TEXT	
+  bws_done . . . . . . . . . . .	L Near	 00000073 _TEXT	
+ClearScreen  . . . . . . . . . .	P Near	 00000239 _TEXT	Length= 0000000F Public STDCALL
 CloseFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CloseHandle  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Clrscr . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -401,14 +572,18 @@ CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 CreateOutputFile . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-DrawTimers . . . . . . . . . . .	P Near	 00000139 _TEXT	Length= 00000076 Public STDCALL
+DrawBase . . . . . . . . . . . .	P Near	 00000248 _TEXT	Length= 00000052 Public STDCALL
+  vBorder_loop_start . . . . . .	L Near	 00000267 _TEXT	
+DrawDinoBase . . . . . . . . . .	P Near	 000001E7 _TEXT	Length= 00000052 Public STDCALL
+  dino_border_loop_start . . . .	L Near	 00000206 _TEXT	
+DrawDinoGame . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-FindArrString  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FlushScreenBuffer  . . . . . . .	P Near	 0000011F _TEXT	Length= 0000002E Public STDCALL
 FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandTail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -424,9 +599,6 @@ GetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 GetMaxXY . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetMseconds  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetNumberOfConsoleInputEvents  .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetPenalty . . . . . . . . . . .	P Near	 000001AF _TEXT	Length= 0000002E Public STDCALL
-  penalty_applies  . . . . . . .	L Near	 000001CE _TEXT	
-  done . . . . . . . . . . . . .	L Near	 000001DC _TEXT	
 GetProcessHeap . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetStdHandle . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetSystemTime  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -474,22 +646,22 @@ SetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 SetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ShowFPUStack . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Sleep  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-StartTimers  . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000003D Public STDCALL
+StartScreen  . . . . . . . . . .	P Near	 0000029A _TEXT	Length= 0000003A Public STDCALL
 StrLength  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_compare  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_copy . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_length . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_trim . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_ucase  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-SwitchTimers . . . . . . . . . .	P Near	 000001DD _TEXT	Length= 0000000D Public STDCALL
 SystemTimeToFileTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-UpdateTimers . . . . . . . . . .	P Near	 0000003D _TEXT	Length= 000000FC Public STDCALL
+UpdateScreen . . . . . . . . . .	P Near	 0000014D _TEXT	Length= 0000009A Public STDCALL
 WaitMsg  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteBinB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteBin . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteChar  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteConsoleA  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteConsoleOutputAttribute  . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleOutputA  . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteConsoleOutputCharacterA . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteDec . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -629,7 +801,11 @@ RIGHT_ALT_PRESSED  . . . . . . .	Number	 00000001h
 RIGHT_CTRL_PRESSED . . . . . . .	Number	 00000004h   
 ReadConsoleInput . . . . . . . .	Text   	 ReadConsoleInputA
 ReadConsole  . . . . . . . . . .	Text   	 ReadConsoleA
+SCREEN_BUF_SIZE  . . . . . . . .	Number	 00000FA0h   
+SCREEN_HEIGHT  . . . . . . . . .	Number	 00000019h   
+SCREEN_WIDTH . . . . . . . . . .	Number	 00000050h   
 SCROLLLOCK_ON  . . . . . . . . .	Number	 00000040h   
+SC_BUFFER_SIZE . . . . . . . . .	Number	 000007D0h   
 SHIFT_MASK . . . . . . . . . . .	Number	 00000010h   
 SHIFT_PRESSED  . . . . . . . . .	Number	 00000010h   
 STD_ERROR_HANDLE . . . . . . . .	Number	 -0000000Ch   
@@ -639,14 +815,6 @@ SetConsoleTitle  . . . . . . . .	Text   	 SetConsoleTitleA
 TAB  . . . . . . . . . . . . . .	Number	 00000009h   
 TRUE . . . . . . . . . . . . . .	Number	 00000001h   
 TRUNCATE_EXISTING  . . . . . . .	Number	 00000005h   
-T_CLASS_CHAR_LENGTH  . . . . . .	Number	 00000050h   
-T_CLASS_INITIAL  . . . . . . . .	Number	 0000C350h   
-T_CLASS_POS_X  . . . . . . . . .	Number	 00000000h   
-T_CLASS_POS_Y  . . . . . . . . .	Number	 00000018h   
-T_LAB_CHAR_LENGTH  . . . . . . .	Number	 00000050h   
-T_LAB_INITIAL  . . . . . . . . .	Number	 0000C350h   
-T_LAB_POS_X  . . . . . . . . . .	Number	 00000000h   
-T_LAB_POS_Y  . . . . . . . . . .	Number	 00000018h   
 VK_11  . . . . . . . . . . . . .	Number	 000000BDh   
 VK_12  . . . . . . . . . . . . .	Number	 000000BBh   
 VK_ADD . . . . . . . . . . . . .	Number	 0000006Bh   
@@ -731,12 +899,16 @@ WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
 black  . . . . . . . . . . . . .	Number	 00000000h   
 blue . . . . . . . . . . . . . .	Number	 00000001h   
 brown  . . . . . . . . . . . . .	Number	 00000006h   
-curr_timer . . . . . . . . . . .	Byte	 000000B4 _DATA	
-curr_time  . . . . . . . . . . .	DWord	 00000004 _DATA	
+bufColor . . . . . . . . . . . .	Byte	 00000FA2 _DATA	
+bufCursorX . . . . . . . . . . .	Byte	 00000FA0 _DATA	
+bufCursorY . . . . . . . . . . .	Byte	 00000FA1 _DATA	
+currState  . . . . . . . . . . .	Byte	 00000000 FLAT	External STDCALL
 cyan . . . . . . . . . . . . . .	Number	 00000003h   
 exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
 gray . . . . . . . . . . . . . .	Number	 00000008h   
 green  . . . . . . . . . . . . .	Number	 00000002h   
+hBorderLeft  . . . . . . . . . .	Byte	 00001051 _DATA	
+hBorder  . . . . . . . . . . . .	Byte	 00000FB3 _DATA	
 lightBlue  . . . . . . . . . . .	Number	 00000009h   
 lightCyan  . . . . . . . . . . .	Number	 0000000Bh   
 lightGray  . . . . . . . . . . .	Number	 00000007h   
@@ -744,14 +916,15 @@ lightGreen . . . . . . . . . . .	Number	 0000000Ah
 lightMagenta . . . . . . . . . .	Number	 0000000Dh   
 lightRed . . . . . . . . . . . .	Number	 0000000Ch   
 magenta  . . . . . . . . . . . .	Number	 00000005h   
-prev_time  . . . . . . . . . . .	DWord	 00000000 _DATA	
 red  . . . . . . . . . . . . . .	Number	 00000004h   
-t_class_curr_length  . . . . . .	Byte	 0000005D _DATA	
-t_class_text . . . . . . . . . .	Byte	 0000000C _DATA	
-t_lab_curr_length  . . . . . . .	Byte	 000000B3 _DATA	
-t_lab_text . . . . . . . . . . .	Byte	 00000062 _DATA	
-timer_class  . . . . . . . . . .	DWord	 00000008 _DATA	
-timer_lab  . . . . . . . . . . .	DWord	 0000005E _DATA	
+scBuffer . . . . . . . . . . . .	Byte	 000010B2 _DATA	
+scTextFile . . . . . . . . . . .	Byte	 000010A1 _DATA	
+screenBuffer . . . . . . . . . .	Byte	 00000000 _DATA	
+vBorderLeft  . . . . . . . . . .	Byte	 00001079 _DATA	
+vBorder  . . . . . . . . . . . .	Byte	 00001002 _DATA	
+wcoBufCoord  . . . . . . . . . .	Word	 00000FA7 _DATA	
+wcoBufSize . . . . . . . . . . .	Word	 00000FA3 _DATA	
+wcoWriteRegion . . . . . . . . .	Word	 00000FAB _DATA	
 white  . . . . . . . . . . . . .	Number	 0000000Fh   
 wsprintf . . . . . . . . . . . .	Text   	 wsprintfA
 yellow . . . . . . . . . . . . .	Number	 0000000Eh   
