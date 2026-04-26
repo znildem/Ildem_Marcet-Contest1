@@ -3,6 +3,12 @@
 INCLUDE Irvine32.inc
 
 DrawDinoGame PROTO
+WriteConsoleOutputA PROTO, \
+    hConsoleOutput:DWORD, \
+    lpBuffer:PTR BYTE, \
+    dwBufferSize:DWORD, \
+    dwBufferCoord:DWORD, \
+    lpWriteRegion:PTR BYTE
 
 .data
 ; Screen buffer : 80x25 cells, 2 bytes each(char + attribute)
@@ -52,6 +58,7 @@ PUBLIC BufSetTextColor
 PUBLIC BufWriteString
 PUBLIC BufWriteChar
 PUBLIC BufClearScreen
+PUBLIC FlushScreenBuffer
 
 ; Sets the virtual cursor position for buffer writes
 ; IN: dh = row, dl = col (same as Irvine Gotoxy)
@@ -191,6 +198,31 @@ BufClearScreen PROC
     pop eax
     ret
 BufClearScreen ENDP
+
+FlushScreenBuffer PROC
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push esi
+
+    push -11
+    call GetStdHandle       ; eax = console handle
+
+    invoke WriteConsoleOutputA, \
+        eax, \
+        ADDR screenBuffer, \
+        DWORD PTR wcoBufSize, \
+        DWORD PTR wcoBufCoord, \
+        ADDR wcoWriteRegion
+
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    ret
+FlushScreenBuffer ENDP
 
 
 UpdateScreen PROC
