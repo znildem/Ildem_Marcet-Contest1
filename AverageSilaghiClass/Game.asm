@@ -59,51 +59,55 @@ DrawEndScreen PROC
     push ebx
     push edx
 
-    call ClearScreen
+    call BufClearScreen
     call DrawBase
-
-    ; Left panel: quiz questions
     call DrawQuiz
 
+    ; Quiz score at bottom of left panel (row 22, col 1)
     mov eax, white + (black * 16)
-    call SetTextColor
+    call BufSetTextColor
     mov dh, 22
     mov dl, 1
-    call Gotoxy
+    call BufGotoxy
     mov edx, OFFSET scoreQuizLabel
-    call WriteString
+    call BufWriteString
+    ; WriteDec writes directly to console - write score digits manually
     mov eax, quizScore
     call WriteDec
     mov edx, OFFSET scoreSuffix50
-    call WriteString
+    call BufWriteString
 
     ; Right panel: lab questions
     call DrawLab
 
+    ; Lab score at bottom of right panel (row 22, col 39)
     mov eax, white + (black * 16)
-    call SetTextColor
+    call BufSetTextColor
     mov dh, 22
     mov dl, 39
-    call Gotoxy
+    call BufGotoxy
     mov edx, OFFSET scoreLabLabel
-    call WriteString
+    call BufWriteString
     mov eax, labScore
     call WriteDec
     mov edx, OFFSET scoreSuffix50
-    call WriteString
+    call BufWriteString
 
+    ; Total score at row 24 (timer row)
+    mov eax, white + (black * 16)
+    call BufSetTextColor
     mov dh, 24
     mov dl, 0
-    call Gotoxy
-    mov eax, white + (black * 16)
-    call SetTextColor
+    call BufGotoxy
     mov edx, OFFSET scoreTotalLabel
-    call WriteString
+    call BufWriteString
     mov eax, quizScore
     add eax, labScore
     call WriteDec
     mov edx, OFFSET scoreSuffix100
-    call WriteString
+    call BufWriteString
+
+    call FlushScreenBuffer
 
     pop edx
     pop ebx
@@ -114,15 +118,15 @@ DrawEndScreen ENDP
 Game PROC
     mov currState, 0
 
+    ; STATE 0: start screen
     call BufClearScreen
     call UpdateScreen
-	call FlushScreenBuffer
+    call FlushScreenBuffer
     call StartTimers
 
-; STATE 0: start screen
 press_enter_loop_start:
     call UpdateTimers
-	call FlushScreenBuffer
+    call FlushScreenBuffer
     mov eax, 50
     call Delay
     call ReadKey
@@ -132,15 +136,16 @@ press_enter_loop_start:
     movzx eax, chosenDifficulty
     call LoadQuiz
 
-; STATE 1: getting quiz (dino)
+    ; STATE 1: getting quiz (dino)
     mov currState, 1
     call DinoInit
 
 getting_quiz_loop_start:
+    call BufClearScreen
     call DinoTick
     call UpdateScreen
-	call FlushScreenBuffer
     call DrawTimers
+    call FlushScreenBuffer
     call UpdateTimers
     mov eax, 50
     call Delay
@@ -152,19 +157,14 @@ getting_quiz_loop_start:
     call DinoWasSuccess
     cmp al, 1
     je state1_done
-
     call ApplyDinoPenalty
 
 state1_done:
     mov eax, 150
     call Delay
 
-; STATE 2: solving quiz
+    ; STATE 2: solving quiz
     mov currState, 2
-    call BufClearScreen
-    call DrawBase
-    call DrawQuiz
-    call DrawTimers
 
 flush_keys_2:
     invoke GetAsyncKeyState, VK_RETURN
@@ -172,12 +172,14 @@ flush_keys_2:
     jnz flush_keys_2
 
 quiz_loop_start:
-    call HandleInput
-    mov last_input, al
-
     call BufClearScreen
     call DrawBase
     call DrawQuiz
+    call DrawTimers
+    call FlushScreenBuffer
+
+    call HandleInput
+    mov last_input, al
     call UpdateTimers
 
     mov eax, 50
@@ -188,16 +190,18 @@ quiz_loop_start:
 
     mov eax, 150
     call Delay
+    call CheckQuiz
 
-; STATE 3: turning in quiz (dino)
+    ; STATE 3: turning in quiz (dino)
     mov currState, 3
     call DinoInit
 
 turning_in_quiz_loop_start:
+    call BufClearScreen
     call DinoTick
     call UpdateScreen
-	call FlushScreenBuffer
     call DrawTimers
+    call FlushScreenBuffer
     call UpdateTimers
     mov eax, 50
     call Delay
@@ -209,15 +213,13 @@ turning_in_quiz_loop_start:
     call DinoWasSuccess
     cmp al, 1
     je state3_done
-
     call ApplyDinoPenalty
 
 state3_done:
-    call CheckQuiz
     mov eax, 150
     call Delay
 
-; STATE 4: getting lab (dino)
+    ; STATE 4: getting lab (dino)
     mov currState, 4
     call SwitchTimers
     movzx eax, chosenDifficulty
@@ -225,10 +227,11 @@ state3_done:
     call DinoInit
 
 getting_lab_loop_start:
+    call BufClearScreen
     call DinoTick
     call UpdateScreen
-	call FlushScreenBuffer
     call DrawTimers
+    call FlushScreenBuffer
     call UpdateTimers
     mov eax, 50
     call Delay
@@ -240,19 +243,14 @@ getting_lab_loop_start:
     call DinoWasSuccess
     cmp al, 1
     je state4_done
-
     call ApplyDinoPenalty
 
 state4_done:
     mov eax, 150
     call Delay
 
-; STATE 5: solving lab
+    ; STATE 5: solving lab
     mov currState, 5
-    call ClearScreen
-    call DrawBase
-    call DrawLab
-    call DrawTimers
 
 flush_keys_5:
     invoke GetAsyncKeyState, VK_RETURN
@@ -260,12 +258,14 @@ flush_keys_5:
     jnz flush_keys_5
 
 lab_loop_start:
-    call HandleInput
-    mov last_input, al
-
-    call ClearScreen
+    call BufClearScreen
     call DrawBase
     call DrawLab
+    call DrawTimers
+    call FlushScreenBuffer
+
+    call HandleInput
+    mov last_input, al
     call UpdateTimers
 
     mov eax, 50
@@ -276,16 +276,18 @@ lab_loop_start:
 
     mov eax, 150
     call Delay
+    call CheckLab
 
-; STATE 6: turning in lab (dino)
+    ; STATE 6: turning in lab (dino)
     mov currState, 6
     call DinoInit
 
 turning_in_lab_loop_start:
+    call BufClearScreen
     call DinoTick
     call UpdateScreen
-	call FlushScreenBuffer
     call DrawTimers
+    call FlushScreenBuffer
     call UpdateTimers
     mov eax, 50
     call Delay
@@ -297,7 +299,6 @@ turning_in_lab_loop_start:
     call DinoWasSuccess
     cmp al, 1
     je state6_done
-
     call ApplyDinoPenalty
 
 state6_done:
@@ -305,10 +306,9 @@ state6_done:
     mov eax, 150
     call Delay
 
-; STATE 7: end screen
+    ; STATE 7: end screen
     mov currState, 7
     call DrawEndScreen
-    call ReadChar
     call ReadChar
     ret
 Game ENDP
