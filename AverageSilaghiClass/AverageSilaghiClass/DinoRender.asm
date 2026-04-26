@@ -183,7 +183,7 @@ draw_small_cactus:
 	mov eax, cactusX
 	mov dl, al
 	movzx ebx, cactusHeight
-	mov dh, 18
+	mov dh, 16
 	sub dh, bl
 	call Gotoxy
 	mov edx, OFFSET cactusSmall1
@@ -193,7 +193,7 @@ draw_small_cactus:
 	mov eax, cactusX
 	mov dl, al
 	movzx ebx, cactusHeight
-	mov dh, 19
+	mov dh, 17
 	sub dh, bl
 	call Gotoxy
 	mov edx, OFFSET cactusSmall2
@@ -203,7 +203,7 @@ draw_small_cactus:
 	mov eax, cactusX
 	mov dl, al
 	movzx ebx, cactusHeight
-	mov dh, 20
+	mov dh, 18
 	sub dh, bl
 	call Gotoxy
 	mov edx, OFFSET cactusSmall3
@@ -213,7 +213,7 @@ draw_small_cactus:
 	mov eax, cactusX
 	mov dl, al
 	movzx ebx, cactusHeight
-	mov dh, 21
+	mov dh, 19
 	sub dh, bl
 	call Gotoxy
 	mov edx, OFFSET cactusSmall3
@@ -223,7 +223,7 @@ draw_small_cactus:
 	mov eax, cactusX
 	mov dl, al
 	movzx ebx, cactusHeight
-	mov dh, 22
+	mov dh, 20
 	sub dh, bl
 	call Gotoxy
 	mov edx, OFFSET cactusSmall3
