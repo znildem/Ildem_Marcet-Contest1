@@ -12,6 +12,7 @@ EXTERN dinoGameOver:BYTE
 EXTERN cactusType:BYTE
 EXTERN cactusHeight:BYTE
 EXTERN birdFrame:BYTE
+EXTERN dinoDuck:BYTE
 
 ; Simple ASCII representations
 dinoSprite1 BYTE "    ",219,219,219,219,0
@@ -22,6 +23,12 @@ dinoSprite5 BYTE 219,219,219,219,219,219,219,219,219,219," ",0
 dinoSprite6 BYTE "  ",219,219,219,219,219,219,219,"  ",0
 dinoSprite7 BYTE "  ",219,219," ",219,219,"    ",0
 dinoSprite8 BYTE "  ",219,"  ",219,"     ",0
+
+duckSprite1 BYTE "       ",219,219,219,219,0
+duckSprite2 BYTE "      ",219,"o",219,219,219,219,0
+duckSprite3 BYTE 219,219,219,219,219,219,219,219,219,219,"  ",0
+duckSprite4 BYTE "  ",219,219,219,219,219,219,"    ",0
+duckSprite5 BYTE "   ",219,219,"    ",219,219,0
 
 cactusSmall1 BYTE "  #",0
 cactusSmall2 BYTE " # #",0
@@ -234,7 +241,9 @@ draw_small_cactus:
 cactus_done:
 
 	; Draw dinosaur
-		; Draw dinosaur
+	cmp dinoDuck, 1
+	je draw_duck_dino
+
 	mov eax, dinoY
 	mov ebx, 20
 	sub ebx, eax
@@ -292,6 +301,47 @@ cactus_done:
 	mov dl, 5
 	call Gotoxy
 	mov edx, OFFSET dinoSprite8
+	call WriteString
+
+	ret
+
+draw_duck_dino:
+	mov eax, dinoY
+	mov ebx, 20
+	sub ebx, eax
+
+	mov dh, bl
+	sub dh, 4
+	mov dl, 5
+	call Gotoxy
+	mov edx, OFFSET duckSprite1
+	call WriteString
+
+	mov dh, bl
+	sub dh, 3
+	mov dl, 5
+	call Gotoxy
+	mov edx, OFFSET duckSprite2
+	call WriteString
+
+	mov dh, bl
+	sub dh, 2
+	mov dl, 5
+	call Gotoxy
+	mov edx, OFFSET duckSprite3
+	call WriteString
+
+	mov dh, bl
+	sub dh, 1
+	mov dl, 5
+	call Gotoxy
+	mov edx, OFFSET duckSprite4
+	call WriteString
+
+	mov dh, bl
+	mov dl, 5
+	call Gotoxy
+	mov edx, OFFSET duckSprite5
 	call WriteString
 
 	ret

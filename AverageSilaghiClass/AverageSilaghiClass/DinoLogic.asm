@@ -6,6 +6,7 @@ GetAsyncKeyState PROTO, vKey:DWORD
 
 VK_SPACE  = 20h
 VK_UP     = 26h
+VK_DOWN   = 28h
 
 .data
 PUBLIC DinoInit
@@ -20,6 +21,7 @@ EXTERN cactusType:BYTE
 EXTERN cactusHeight:BYTE
 EXTERN cactusSpeed:SDWORD
 EXTERN birdFrame:BYTE
+EXTERN dinoDuck:BYTE
 
 .code
 
@@ -33,6 +35,7 @@ DinoInit PROC
 	mov cactusHeight, 0
 	mov cactusSpeed, 1
 	mov birdFrame, 0
+	mov dinoDuck, 0
 	ret
 DinoInit ENDP
 
@@ -46,6 +49,20 @@ DinoTick PROC
 		call DinoInit
 		jmp tick_end
 	.endif
+
+	; Duck with Down Arrow only while on ground
+	mov dinoDuck, 0
+	invoke GetAsyncKeyState, VK_DOWN
+	test ax, 8000h
+	jz check_jump_input
+
+	mov eax, dinoY
+	cmp eax, 0
+	jne check_jump_input
+
+	mov dinoDuck, 1
+
+check_jump_input:
 
 	; Jump on Space or Up Arrow only if on ground
 	invoke GetAsyncKeyState, VK_SPACE
@@ -166,6 +183,10 @@ bird_collision:
 	jl tick_end
 	cmp eax, 12
 	jg tick_end
+
+	; If ducking on ground, dodge bird
+	cmp dinoDuck, 1
+	je tick_end
 
 	; Bird Y-range: cactusHeight + 2
 	movzx ebx, cactusHeight

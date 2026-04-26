@@ -12,6 +12,7 @@ PUBLIC cactusType
 PUBLIC cactusHeight
 PUBLIC cactusSpeed
 PUBLIC birdFrame
+PUBLIC dinoDuck
 
 ; Dino vertical position
 ; 0 = on ground
@@ -41,5 +42,8 @@ cactusHeight BYTE 0
 cactusSpeed SDWORD 1
 
 birdFrame BYTE 0
+
+; 0 = normal, 1 = ducking
+dinoDuck BYTE 0
 
 END
