@@ -51,6 +51,7 @@ PUBLIC BufGotoxy
 PUBLIC BufSetTextColor
 PUBLIC BufWriteString
 PUBLIC BufWriteChar
+PUBLIC BufClearScreen
 
 ; Sets the virtual cursor position for buffer writes
 ; IN: dh = row, dl = col (same as Irvine Gotoxy)
@@ -164,6 +165,32 @@ BufWriteChar PROC
     pop eax
     ret
 BufWriteChar ENDP
+
+; Clears screenBuffer to spaces with current color
+BufClearScreen PROC
+    push eax
+    push ecx
+    push edi
+ 
+    mov ecx, 0
+    bcs_loop:
+        cmp ecx, SCREEN_BUF_SIZE
+        jge bcs_done
+        mov BYTE PTR screenBuffer[ecx], ' '
+        mov al, bufColor
+        mov BYTE PTR screenBuffer[ecx + 1], al
+        add ecx, 2
+        jmp bcs_loop
+    bcs_done:
+ 
+    mov bufCursorX, 0
+    mov bufCursorY, 0
+ 
+    pop edi
+    pop ecx
+    pop eax
+    ret
+BufClearScreen ENDP
 
 
 UpdateScreen PROC
