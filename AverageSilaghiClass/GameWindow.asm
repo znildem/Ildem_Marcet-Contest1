@@ -5,6 +5,30 @@ INCLUDE Irvine32.inc
 DrawDinoGame PROTO
 
 .data
+; Screen buffer : 80x25 cells, 2 bytes each(char + attribute)
+SCREEN_WIDTH = 80
+SCREEN_HEIGHT = 25
+SCREEN_BUF_SIZE = SCREEN_WIDTH * SCREEN_HEIGHT * 2
+screenBuffer BYTE SCREEN_BUF_SIZE DUP(0)
+
+; Current virtual cursor position and color for buffer writes
+bufCursorX      BYTE 0
+bufCursorY      BYTE 0
+bufColor        BYTE(white + (black * 16))
+
+
+; WriteConsoleOutput structures
+wcoBufSize      WORD SCREEN_WIDTH; buffer width
+WORD SCREEN_HEIGHT; buffer height
+wcoBufCoord     WORD 0; top - left of buffer to read(x)
+WORD 0; top - left of buffer to read(y)
+wcoWriteRegion  WORD 0; left
+WORD 0; top
+WORD SCREEN_WIDTH - 1; right
+WORD SCREEN_HEIGHT - 1; bottom
+
+
+
 hBorder BYTE "+-------------------------------------++-------------------------------------+", 0
 vBorder BYTE "|                                     ||                                     |", 0
 hBorderLeft BYTE "+-------------------------------------+", 0
