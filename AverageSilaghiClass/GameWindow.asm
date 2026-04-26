@@ -50,6 +50,7 @@ PUBLIC DrawDinoBase
 PUBLIC BufGotoxy
 PUBLIC BufSetTextColor
 PUBLIC BufWriteString
+PUBLIC BufWriteChar
 
 ; Sets the virtual cursor position for buffer writes
 ; IN: dh = row, dl = col (same as Irvine Gotoxy)
@@ -116,6 +117,53 @@ BufWriteString PROC
     pop eax
     ret
 BufWriteString ENDP
+
+; Writes a single character into screenBuffer at current cursor pos
+; IN: al = character (same as Irvine WriteChar)
+BufWriteChar PROC
+    push eax
+    push ebx
+ 
+    movzx eax, bufCursorY
+    mov ebx, SCREEN_WIDTH
+    mul ebx
+    movzx ebx, bufCursorX
+    add eax, ebx
+    shl eax, 1
+ 
+    mov bl, al
+    ; al was clobbered by mul - get char back from bl after push
+    ; actually al is clobbered - save char in bh first
+    pop ebx                     ; restore ebx (was pushed)
+    pop eax                     ; restore eax (original al = char)
+    push eax
+    push ebx
+ 
+    ; recalculate offset with char saved
+    push eax                    ; save char
+    movzx eax, bufCursorY
+    mov ebx, SCREEN_WIDTH
+    mul ebx
+    movzx ebx, bufCursorX
+    add eax, ebx
+    shl eax, 1                  ; eax = byte offset
+ 
+    pop ebx                     ; ebx = char (was in al originally)
+    mov BYTE PTR screenBuffer[eax], bl
+    mov bl, bufColor
+    mov BYTE PTR screenBuffer[eax + 1], bl
+ 
+    inc bufCursorX
+    cmp bufCursorX, SCREEN_WIDTH
+    jl bwc_done
+    mov bufCursorX, 0
+    inc bufCursorY
+ 
+    bwc_done:
+    pop ebx
+    pop eax
+    ret
+BufWriteChar ENDP
 
 
 UpdateScreen PROC
