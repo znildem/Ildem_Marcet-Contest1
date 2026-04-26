@@ -2,6 +2,11 @@
 
 INCLUDE Irvine32.inc
 
+BufGotoxy PROTO
+BufSetTextColor PROTO
+BufWriteString PROTO
+BufWriteChar PROTO
+
 QUIZ_PANEL_LEFT  = 1
 LAB_PANEL_LEFT   = 39
 PANEL_TOP        = 1
@@ -313,7 +318,7 @@ DrawQuiz PROC
         mov dh, cl
         add dh, PANEL_TOP
         mov dl, QUIZ_PANEL_LEFT
-        call Gotoxy
+        call BufGotoxy
 
         movzx ebx, cl
         mov eax, quizOffsets[ebx * 4]
@@ -344,12 +349,12 @@ DrawQuiz PROC
             .if cl == currQuestion
                 push eax
                 mov eax, black + (white * 16)
-                call SetTextColor
+                call BufSetTextColor
                 pop eax
             .else
                 push eax
                 mov eax, white + (black * 16)
-                call SetTextColor
+                call BufSetTextColor
                 pop eax
             .endif
 
@@ -372,17 +377,17 @@ DrawQuiz PROC
             mov edx, draw_col_save
 
             mov al, draw_answer_char
-            call WriteChar
+            call BufWriteChar
             jmp dqz_advance
 
             dqz_normal:
             push eax
             mov eax, white + (black * 16)
-            call SetTextColor
+            call BufSetTextColor
             pop eax
             mov esi, OFFSET quizBuffer
             mov al, BYTE PTR [esi + eax]
-            call WriteChar
+            call BufWriteChar
 
             dqz_advance:
             inc edx
@@ -421,7 +426,7 @@ DrawLab PROC
         mov dh, cl
         add dh, PANEL_TOP
         mov dl, LAB_PANEL_LEFT
-        call Gotoxy
+        call BufGotoxy
 
         movzx ebx, cl
         mov eax, labOffsets[ebx * 4]
@@ -452,12 +457,12 @@ DrawLab PROC
             .if cl == currQuestion
                 push eax
                 mov eax, black + (white * 16)
-                call SetTextColor
+                call BufSetTextColor
                 pop eax
             .else
                 push eax
                 mov eax, white + (black * 16)
-                call SetTextColor
+                call BufSetTextColor
                 pop eax
             .endif
 
@@ -480,17 +485,17 @@ DrawLab PROC
             mov edx, draw_col_save
 
             mov al, draw_answer_char
-            call WriteChar
+            call BufWriteChar
             jmp dlb_advance
 
             dlb_normal:
             push eax
             mov eax, white + (black * 16)
-            call SetTextColor
+            call BufSetTextColor
             pop eax
             mov esi, OFFSET labBuffer
             mov al, BYTE PTR [esi + eax]
-            call WriteChar
+            call BufWriteChar
 
             dlb_advance:
             inc edx
