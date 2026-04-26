@@ -87,9 +87,13 @@ BufWriteString PROC
     mov esi, edx
 
     bws_loop:
-        mov al, BYTE PTR [esi]
+		mov al, BYTE PTR [esi]
         cmp al, 0
         je bws_done
+        cmp al, 0Ah         ; LF - move to next row
+        je bws_newline
+        cmp al, 0Dh         ; CR - ignore
+        je bws_cr
 
         movzx edi, bufCursorY
         imul edi, SCREEN_WIDTH
@@ -112,7 +116,16 @@ BufWriteString PROC
         bws_next:
         inc esi
         jmp bws_loop
+		
+		bws_cr:
+        inc esi
+        jmp bws_loop
 
+		bws_newline:
+        mov bufCursorX, 0
+        inc bufCursorY
+        inc esi
+        jmp bws_loop
     bws_done:
     pop esi
     pop edi
