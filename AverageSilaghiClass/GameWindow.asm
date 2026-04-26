@@ -49,6 +49,7 @@ PUBLIC DrawBase
 PUBLIC DrawDinoBase
 PUBLIC BufGotoxy
 PUBLIC BufSetTextColor
+PUBLIC BufWriteString
 
 ; Sets the virtual cursor position for buffer writes
 ; IN: dh = row, dl = col (same as Irvine Gotoxy)
@@ -64,6 +65,57 @@ BufSetTextColor PROC
     mov bufColor, al
     ret
 BufSetTextColor ENDP
+
+; Writes a null-terminated string into screenBuffer at current cursor pos
+; IN: edx = string address (same as Irvine WriteString)
+; Advances bufCursorX after each char, wraps to next row on overflow
+BufWriteString PROC
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push esi
+ 
+    mov esi, edx            ; esi = string pointer
+    mov ecx, 0              ; char index
+ 
+    bws_loop:
+        mov al, BYTE PTR [esi + ecx]
+        cmp al, 0
+        je bws_done
+ 
+        ; buffer offset = (row * SCREEN_WIDTH + col) * 2
+        movzx eax, bufCursorY
+        mov ebx, SCREEN_WIDTH
+        mul ebx                     ; eax = row * SCREEN_WIDTH
+        movzx ebx, bufCursorX
+        add eax, ebx               ; eax = row * SCREEN_WIDTH + col
+        shl eax, 1                 ; eax = offset in bytes (* 2)
+ 
+        mov bl, BYTE PTR [esi + ecx]
+        mov BYTE PTR screenBuffer[eax], bl      ; char byte
+        mov bl, bufColor
+        mov BYTE PTR screenBuffer[eax + 1], bl  ; attribute byte
+ 
+        ; advance cursor
+        inc bufCursorX
+        cmp bufCursorX, SCREEN_WIDTH
+        jl bws_next
+        mov bufCursorX, 0
+        inc bufCursorY
+ 
+        bws_next:
+        inc ecx
+        jmp bws_loop
+ 
+    bws_done:
+    pop esi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    ret
+BufWriteString ENDP
 
 
 UpdateScreen PROC
