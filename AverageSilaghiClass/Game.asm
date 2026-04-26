@@ -11,6 +11,13 @@ DrawTimers PROTO
 SwitchTimers PROTO
 HandleInput PROTO
 
+BufGotoxy PROTO
+BufSetTextColor PROTO
+BufWriteString PROTO
+BufWriteChar PROTO
+BufClearScreen PROTO
+FlushScreenBuffer PROTO
+
 DinoInit PROTO
 DinoTick PROTO
 DinoIsDone PROTO
@@ -107,13 +114,15 @@ DrawEndScreen ENDP
 Game PROC
     mov currState, 0
 
-    call ClearScreen
+    call BufClearScreen
     call UpdateScreen
+	call FlushScreenBuffer
     call StartTimers
 
 ; STATE 0: start screen
 press_enter_loop_start:
     call UpdateTimers
+	call FlushScreenBuffer
     mov eax, 50
     call Delay
     call ReadKey
@@ -130,6 +139,7 @@ press_enter_loop_start:
 getting_quiz_loop_start:
     call DinoTick
     call UpdateScreen
+	call FlushScreenBuffer
     call DrawTimers
     call UpdateTimers
     mov eax, 50
@@ -151,7 +161,7 @@ state1_done:
 
 ; STATE 2: solving quiz
     mov currState, 2
-    call ClearScreen
+    call BufClearScreen
     call DrawBase
     call DrawQuiz
     call DrawTimers
@@ -165,7 +175,7 @@ quiz_loop_start:
     call HandleInput
     mov last_input, al
 
-    call ClearScreen
+    call BufClearScreen
     call DrawBase
     call DrawQuiz
     call UpdateTimers
@@ -186,6 +196,7 @@ quiz_loop_start:
 turning_in_quiz_loop_start:
     call DinoTick
     call UpdateScreen
+	call FlushScreenBuffer
     call DrawTimers
     call UpdateTimers
     mov eax, 50
@@ -216,6 +227,7 @@ state3_done:
 getting_lab_loop_start:
     call DinoTick
     call UpdateScreen
+	call FlushScreenBuffer
     call DrawTimers
     call UpdateTimers
     mov eax, 50
@@ -272,6 +284,7 @@ lab_loop_start:
 turning_in_lab_loop_start:
     call DinoTick
     call UpdateScreen
+	call FlushScreenBuffer
     call DrawTimers
     call UpdateTimers
     mov eax, 50
