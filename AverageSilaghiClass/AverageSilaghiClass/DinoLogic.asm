@@ -133,10 +133,36 @@ skip_ground_clamp:
 
 skip_speed_increase:
 
-	; random type: 0 = small, 1 = large, 2 = flying
+	; Choose obstacle type
+	; Early game: 0 = small, 1 = large, 2 = flying
+	; After score 5: birds become more common
+
+	mov eax, dinoScore
+	cmp eax, 5
+	jl normal_obstacle_random
+
+	; Higher score: 50% chance bird
+	mov eax, 2
+	call RandomRange
+	cmp eax, 0
+	je make_bird
+
+	; Otherwise choose small or large cactus
+	mov eax, 2
+	call RandomRange
+	mov cactusType, al
+	jmp obstacle_type_done
+
+make_bird:
+	mov cactusType, 2
+	jmp obstacle_type_done
+
+normal_obstacle_random:
 	mov eax, 3
 	call RandomRange
 	mov cactusType, al
+
+obstacle_type_done:
 
 	; Random height depends on type
 	movzx eax, cactusType
