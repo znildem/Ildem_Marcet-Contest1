@@ -173,7 +173,26 @@ skip_ground_clamp:
 	cmp eax, 0
 	jge skip_cactus_reset
 
+	;Spawn obstacle closer as score increases
+	mov eax, dinoScore
+	cmp eax, 10
+	jl spawn_far
+
+	cmp eax, 20
+	jl spawn_medium
+
+spawn_close:
+	mov cactusX, 30
+	jmp spawn_done
+
+spawn_medium:
+	mov cactusX, 35
+	jmp spawn_done
+
+spawn_far:
 	mov cactusX, 40
+
+spawn_done:
 	inc dinoScore
 
 	; increase speed every 5 points
@@ -198,11 +217,27 @@ skip_speed_increase:
 	cmp eax, 5
 	jl normal_obstacle_random
 
-	; Higher score: 50% chance bird
+	; Higher score bird chance:
+	; score 5-14  -> 50% bird
+	; score 15+   -> 67% bird
+	mov eax, dinoScore
+	cmp eax, 15
+	jl bird_chance_50
+
+bird_chance_67:
+	mov eax, 3
+	call RandomRange
+	cmp eax, 2
+	jne make_bird
+	jmp choose_cactus
+
+bird_chance_50:
 	mov eax, 2
 	call RandomRange
 	cmp eax, 0
 	je make_bird
+
+choose_cactus:
 
 	; Otherwise choose small or large cactus
 	mov eax, 2
