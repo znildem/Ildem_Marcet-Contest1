@@ -224,22 +224,41 @@ skip_cactus_reset:
 	jmp check_height
 
 bird_collision: 
-	; Bird X-range: 7-12
+	; Bird X-range: overlap with dino area
 	mov eax, cactusX
-	cmp eax, 7
+	cmp eax, 5
 	jl tick_end
-	cmp eax, 12
+	cmp eax, 14
 	jg tick_end
 
 	; If ducking on ground, dodge bird
 	cmp dinoDuck, 1
 	je tick_end
 
-	; Bird Y-range: cactusHeight + 2
+	; Exact bird/dino vertical overlap check
+	; bird rows = 18 - cactusHeight through 19 - cactusHeight
+	; dino rows = 13 - dinoY through - dinoY
+
+	; If bird bottom is above dino top, no collision
 	movzx ebx, cactusHeight
-	add ebx, 2
-	mov ecx, dinoY
+	mov eax, 19
+	sub eax, ebx
+
+	mov ecx, 13
+	sub ecx, dinoY
+
 	cmp ecx, ebx
+	jg tick_end
+
+	; If bird top is below dino bottom, no collision
+	movzx ebx, cactusHeight
+	mov eax, 18
+	sub eax, ebx
+
+	mov ecx, 20
+	sub ecx, dinoY
+
+	cmp eax, ecx
 	jg tick_end
 
 	mov dinoGameOver, 1
@@ -251,8 +270,9 @@ normal_width:
 	jg tick_end
 
 check_height:
+	; Cactus collision has small tolerance
 	movzx ebx, cactusHeight
-	inc ebx
+	add ebx, 2
 	mov eax, dinoY
 	cmp eax, ebx
 	jg tick_end
