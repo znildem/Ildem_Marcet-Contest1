@@ -118,6 +118,9 @@ BufWriteString PROC
         jl bws_next
         mov bufCursorX, 0
         inc bufCursorY
+        cmp bufCursorY, SCREEN_HEIGHT
+        jl bws_next
+        mov bufCursorY, SCREEN_HEIGHT - 1  ; clamp to last row
 
         bws_next:
         inc esi
@@ -130,8 +133,13 @@ BufWriteString PROC
 		bws_newline:
         mov bufCursorX, 0
         inc bufCursorY
+        cmp bufCursorY, SCREEN_HEIGHT
+        jl bws_newline_ok
+        mov bufCursorY, SCREEN_HEIGHT - 1
+        bws_newline_ok:
         inc esi
         jmp bws_loop
+
     bws_done:
     pop esi
     pop edi
