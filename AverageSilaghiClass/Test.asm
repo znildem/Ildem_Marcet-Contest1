@@ -250,12 +250,16 @@ LoadQuiz PROC
         mov edx, OFFSET quizFileHard
     .endif
     call OpenInputFile
+	push eax
 
     mov edx, OFFSET quizBuffer
     mov ecx, QUESTION_BUF_SIZE - 1
     call ReadFromFile
     mov quizBytesRead, eax
     mov BYTE PTR [quizBuffer + eax], 0
+
+	pop eax
+	call CloseFile
 
     call ParseQuiz
 
@@ -284,12 +288,16 @@ LoadLab PROC
         mov edx, OFFSET labFileHard
     .endif
     call OpenInputFile
+	push eax
 
     mov edx, OFFSET labBuffer
     mov ecx, QUESTION_BUF_SIZE - 1
     call ReadFromFile
     mov labBytesRead, eax
     mov BYTE PTR [labBuffer + eax], 0
+
+	pop eax
+	call CloseFile
 
     call ParseLab
 

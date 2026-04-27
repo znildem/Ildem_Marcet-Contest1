@@ -140,10 +140,13 @@ EnterPressed ENDP
 Syllabus PROC
     mov edx, OFFSET syllabusTextFile
     call OpenInputFile
+	push eax
     mov edx, OFFSET syllabusBuffer
     mov ecx, SYLLABUS_BUFFER_SIZE
     call ReadFromFile
     mov BYTE PTR [syllabusBuffer + eax], 0
+	pop eax
+	call CloseFile
 
     call BufClearScreen
     mov eax, white + (black * 16)
@@ -158,10 +161,13 @@ Syllabus ENDP
 Credits PROC
     mov edx, OFFSET creditsTextFile
     call OpenInputFile
+	push eax
     mov edx, OFFSET creditsBuffer
     mov ecx, CREDITS_BUFFER_SIZE
     call ReadFromFile
     mov BYTE PTR [creditsBuffer + eax], 0
+	pop eax
+	call CloseFile
 
     call BufClearScreen
     mov eax, white + (black * 16)

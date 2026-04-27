@@ -401,11 +401,15 @@ DrawBase ENDP
 StartScreen PROC
     mov edx, OFFSET scTextFile
     call OpenInputFile
+	push eax
 
     mov edx, OFFSET scBuffer
     mov ecx, SC_BUFFER_SIZE - 1
     call ReadFromFile
     mov BYTE PTR [scBuffer + eax], 0
+	
+	pop eax
+	call CloseFile
 
     mov eax, white + (black * 16)
     call BufSetTextColor

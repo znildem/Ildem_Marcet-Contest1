@@ -59,10 +59,13 @@ CheckAnswers PROC
 
     ; Open and read answer file
     call OpenInputFile
+	push eax
     mov edx, OFFSET answerBuffer
     mov ecx, ANSWER_BUF_SIZE - 1
     call ReadFromFile
     mov BYTE PTR [answerBuffer + eax], 0
+	pop eax
+	call CloseFile
 
     ; Walk through each of the 5 questions
     mov ecx, 0                      ; question index
