@@ -319,19 +319,22 @@ DrawDinoBase PROC
     mov eax, gray + (black * 16)
     call BufSetTextColor
 
-    mov dh, 0
+    ; Top full border
+	mov dh, 0
     mov dl, 0
     call BufGotoxy
-    mov edx, OFFSET hBorderLeft
+    mov edx, OFFSET hBorder
     call BufWriteString
 
+	; Side borders full width
     mov cl, 0
+
 dino_border_loop_start:
     mov dh, cl
     add dh, 1
     mov dl, 0
     call BufGotoxy
-    mov edx, OFFSET vBorderLeft
+    mov edx, OFFSET vBorder
     call BufWriteString
 
     inc cl
@@ -339,10 +342,11 @@ dino_border_loop_start:
         jmp dino_border_loop_start
     .endif
 
-    mov dh, 23
+    ; Bottom full border
+	mov dh, 23
     mov dl, 0
     call BufGotoxy
-    mov edx, OFFSET hBorderLeft
+    mov edx, OFFSET hBorder
     call BufWriteString
 
     ret

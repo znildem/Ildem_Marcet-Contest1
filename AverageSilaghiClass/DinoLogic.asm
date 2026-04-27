@@ -182,15 +182,15 @@ skip_ground_clamp:
 	jl spawn_medium
 
 spawn_close:
-	mov cactusX, 30
+	mov cactusX, 70
 	jmp spawn_done
 
 spawn_medium:
-	mov cactusX, 35
+	mov cactusX, 75
 	jmp spawn_done
 
 spawn_far:
-	mov cactusX, 40
+	mov cactusX, 78
 
 spawn_done:
 	inc dinoScore
@@ -280,7 +280,7 @@ skip_cactus_reset:
 
 	; collision check
 	mov eax, cactusX
-	cmp eax, 8
+	cmp eax, 4
 	jl tick_end
 
 	movzx ebx, cactusType
@@ -299,7 +299,7 @@ bird_collision:
 	mov eax, cactusX
 	cmp eax, 5
 	jl tick_end
-	cmp eax, 14
+	cmp eax, 18
 	jg tick_end
 
 	; If ducking on ground, dodge bird

@@ -66,7 +66,7 @@ scoreText BYTE "Score: ",0
 gameOverText BYTE "GAME OVER - press any key",0
 controlsText BYTE "Space/Up = Jump   Down = Duck",0
 
-grassLine BYTE 37 DUP(219),0
+grassLine BYTE 78 DUP(219),0
 
 .code
 PUBLIC DrawDinoGame
