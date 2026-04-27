@@ -1,9 +1,8 @@
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/27/26 18:57:29
-Timers.asm						     Page 1 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/27/26 19:06:09
+MainMenu.asm						     Page 1 - 1
 
 
-				; Timers handling will be done in this file
-				; This does NOT handle midnight change, just dont play at midnight :P
+				; This will handle most of the main menu stuff
 				
 				INCLUDE Irvine32.inc
 			      C ; Include file for Irvine32.lib             (Irvine32.inc)
@@ -28,256 +27,283 @@ Timers.asm						     Page 1 - 1
 				BufGotoxy PROTO
 				BufSetTextColor PROTO
 				BufWriteString PROTO
-				BufWriteChar PROTO
+				BufClearScreen PROTO
+				FlushScreenBuffer PROTO
 				
  00000000			.data
-				; Last call time
- 00000000 00000000		prev_time DWORD ?
- 00000004 00000000		curr_time DWORD ?
+ 00000000 20			space BYTE ' '
+ 00000001 0D 0A			newLine BYTE 0Dh, 0Ah
 				
-				; Timer for the quiz duration
- = 0000C350			T_CLASS_INITIAL = 50000 ; 50 seconds in ms
- = 00000050			T_CLASS_CHAR_LENGTH = 80
- = 00000000			T_CLASS_POS_X = 0
- = 00000018			T_CLASS_POS_Y = 24
- 00000008 00000000		timer_class DWORD ?
- 0000000C 51 55 49 5A 20	t_class_text BYTE "QUIZ DEADLINE                                                                   ", 0
-	   44 45 41 44 4C
-	   49 4E 45 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   00
+				; Title information
+ 00000003 41 6E 20 41 76	gameTitle BYTE "An Average Class with Dr. Silaghi...", 0
+	   65 72 61 67 65
+	   20 43 6C 61 73
+	   73 20 77 69 74
+	   68 20 44 72 2E
+	   20 53 69 6C 61
+	   67 68 69 2E 2E
+	   2E 00
 				
-				; Timer for the lab duration
- = 0000C350			T_LAB_INITIAL = 50000 ; 50 seconds in ms
- = 00000050			T_LAB_CHAR_LENGTH = 80
- = 00000000			T_LAB_POS_X = 0
- = 00000018			T_LAB_POS_Y = 24
- 0000005D 00000000		timer_lab DWORD ?
- 00000061 4C 41 42 20 44	t_lab_text BYTE "LAB DEADLINE                                                                    ", 0
-	   45 41 44 4C 49
-	   4E 45 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   20 20 20 20 20
-	   00
+				; Menu options information
+ 00000028 53 54 41 52 54	menuOptions BYTE    "START", 0,
+	   00 53 59 4C 4C
+	   41 42 55 53 00
+	   43 52 45 44 49
+	   54 53 00 45 58
+	   49 54 00
+				                    "SYLLABUS", 0,
+				                    "CREDITS", 0,
+				                    "EXIT", 0
+ 00000044 04			numOfMenuOptions BYTE 4
+ 00000045 00			currMenuOption BYTE 0
+ 00000046 02			menuOptionsStartRow BYTE 2
 				
- 000000B2 00			curr_timer BYTE 0
+				; Difficulty options
+ 00000047 53 59 4C 4C 41	diffOptions BYTE    "SYLLABUS WEEK", 0,
+	   42 55 53 20 57
+	   45 45 4B 00 41
+	   56 45 52 41 47
+	   45 20 43 4C 41
+	   53 53 00 42 49
+	   42 4C 49 43 41
+	   4C 4C 59 20 41
+	   43 43 55 52 41
+	   54 45 20 53 49
+	   4C 41 47 48 49
+	   20 43 4C 41 53
+	   53 00
+				                    "AVERAGE CLASS", 0,
+				                    "BIBLICALLY ACCURATE SILAGHI CLASS", 0
+ 00000085 03			numOfDiffOptions BYTE 3
+ 00000086 00			currDiffOption BYTE 0
+				PUBLIC chosenDifficulty
+ 00000087 00			chosenDifficulty BYTE 0
+				
+				; Syllabus information
+ 00000088 73 79 6C 6C 61	syllabusTextFile BYTE "syllabus.txt", 0
+	   62 75 73 2E 74
+	   78 74 00
+ = 000007D0			SYLLABUS_BUFFER_SIZE = 2000
+ 00000095  000007D0 [		syllabusBuffer BYTE SYLLABUS_BUFFER_SIZE DUP(?)
+	    00
+	   ]
+ 00000865 00000000		syllabusBytesRead DWORD ?
+				
+				; Credits information
+ 00000869 63 72 65 64 69	creditsTextFile BYTE "credits.txt", 0
+	   74 73 2E 74 78
+	   74 00
+ = 000007D0			CREDITS_BUFFER_SIZE = 2000
+ 00000875  000007D0 [		creditsBuffer BYTE CREDITS_BUFFER_SIZE DUP(?)
+	    00
+	   ]
+ 00001045 00000000		creditsBytesRead DWORD ?
 				
  00000000			.code
-				PUBLIC UpdateTimers
-				PUBLIC StartTimers
-				PUBLIC SwitchTimers
-				PUBLIC DrawTimers
-				PUBLIC GetPenalty
-				PUBLIC ApplyDinoPenalty
+				PUBLIC MainMenu
 				
- 00000000			StartTimers PROC
- 00000000  E8 00000000 E	    call GetMseconds
- 00000005  A3 00000000 R	    mov prev_time, eax
-				
-				    .if curr_timer == 0
- 00000013  C7 05 00000008 R	        mov timer_class, T_CLASS_INITIAL
-	   0000C350
-				    .else
- 0000001F  C7 05 0000005D R	        mov timer_lab, T_LAB_INITIAL
-	   0000C350
-				    .endif
-				
- 00000029  E8 00000061		    call DrawTimers
- 0000002E  C3			    ret
- 0000002F			StartTimers ENDP
-				
- 0000002F			UpdateTimers PROC
- 0000002F  E8 00000000 E	    call GetMseconds
- 00000034  A3 00000004 R	    mov curr_time, eax
-				
-				    .if curr_timer == 0
- 00000042  A1 00000008 R	        mov eax, timer_class
- 00000047  2B 05 00000004 R	        sub eax, curr_time
- 0000004D  03 05 00000000 R	        add eax, prev_time
-				        .if eax < 0
- 00000058  B8 00000000		            mov eax, 0
+				; Main menu function
+				; OUT:
+				;   al: currMenuOption
+ 00000000			MainMenu PROC
+ 00000000			    rewrite_menu:
+ 00000000  E8 0000008F		        call WriteMenu
+ 00000005			    main_loop_start:
+ 00000005  E8 00000000 E	        call ReadChar
+				        .if al == 0Dh
+				            .if currMenuOption == 1
+ 00000017  E8 000000EF		                call Syllabus
+ 0000001C  EB E2		                jmp rewrite_menu
+				            .elseif currMenuOption == 2
+ 00000029  E8 00000121		                call Credits
+ 0000002E  EB D0		                jmp rewrite_menu
+				            .elseif currMenuOption == 0
+ 0000003B  E8 00000153		                call DifficultyMenu
+ 00000040  A2 00000087 R	                mov chosenDifficulty, al
+ 00000045  EB 47		                jmp procedure_end
+				            .endif
+ 00000047  EB 45		            jmp procedure_end
+				        .elseif al == 0
+				            .if ah == 72 ; UP ARROW
+				                .if currMenuOption > 0
+ 0000005D  FE 0D 00000045 R	                    dec currMenuOption
+ 00000063  E8 0000002C		                    call WriteMenu
+				                .endif
+				            .elseif ah == 80 ; DOWN ARROW
+ 0000006F  A0 00000044 R	                mov al, numOfMenuOptions
+ 00000074  FE C8		                dec al
+				                .if currMenuOption < al
+ 0000007E  FE 05 00000045 R	                    inc currMenuOption
+ 00000084  E8 0000000B		                    call WriteMenu
+				                .endif
+				            .endif
 				        .endif
- 0000005D  A3 00000008 R	        mov timer_class, eax
-				    .else
- 00000064  A1 0000005D R	        mov eax, timer_lab
- 00000069  2B 05 00000004 R	        sub eax, curr_time
- 0000006F  03 05 00000000 R	        add eax, prev_time
-				        .if eax < 0
- 0000007A  B8 00000000		            mov eax, 0
-				        .endif
- 0000007F  A3 0000005D R	        mov timer_lab, eax
-				    .endif
 				
- 00000084  A1 00000004 R	    mov eax, curr_time
- 00000089  A3 00000000 R	    mov prev_time, eax
- 0000008E  C3			    ret
- 0000008F			UpdateTimers ENDP
+ 00000089  E9 FFFFFF77		        jmp main_loop_start
+ 0000008E			        procedure_end:
+ 0000008E  A0 00000045 R	    mov al, currMenuOption
+ 00000093  C3			    ret
+ 00000094			MainMenu ENDP
 				
-				; Draws the timer bar in two passes:
-				;   filled portion (black on white) from col 0 to fillLen
-				;   remaining portion (white on black) from fillLen to end
- 0000008F			DrawTimers PROC
- 0000008F  50			    push eax
- 00000090  53			    push ebx
- 00000091  51			    push ecx
- 00000092  52			    push edx
- 00000093  56			    push esi
+ 00000094			WriteMenu PROC
+ 00000094  E8 00000000 E	    call BufClearScreen
 				
-				    ; Set text pointer and compute fill length
-				    .if curr_timer == 0
- 0000009D  A1 00000008 R	        mov eax, timer_class
- 000000A2  BE 0000000C R	        mov esi, OFFSET t_class_text
- 000000A7  B9 00000050		        mov ecx, T_CLASS_CHAR_LENGTH
- 000000AC  BB 0000C350		        mov ebx, T_CLASS_INITIAL
-				    .else
- 000000B3  A1 0000005D R	        mov eax, timer_lab
- 000000B8  BE 00000061 R	        mov esi, OFFSET t_lab_text
- 000000BD  B9 00000050		        mov ecx, T_LAB_CHAR_LENGTH
- 000000C2  BB 0000C350		        mov ebx, T_LAB_INITIAL
-				    .endif
+ 00000099  B8 0000000F		    mov eax, white + (black * 16)
+ 0000009E  E8 00000000 E	    call BufSetTextColor
+ 000000A3  B6 00		    mov dh, 0
+ 000000A5  B2 00		    mov dl, 0
+ 000000A7  E8 00000000 E	    call BufGotoxy
+ 000000AC  BA 00000003 R	    mov edx, OFFSET gameTitle
+ 000000B1  E8 00000000 E	    call BufWriteString
 				
-				    ; fillLen = (timer * CHAR_LENGTH) / INITIAL
- 000000C7  F7 E1		    mul ecx                 ; edx:eax = timer * CHAR_LENGTH
- 000000C9  BA 00000000		    mov edx, 0
- 000000CE  F7 F3		    div ebx                 ; eax = fillLen
-				    .if eax > ecx
- 000000D4  8B C1		        mov eax, ecx
-				    .endif
-				
- 000000D6  8B D8		    mov ebx, eax            ; ebx = fillLen
-				
-				    ; Position cursor at start of timer row
- 000000D8  B6 18		    mov dh, T_CLASS_POS_Y
- 000000DA  B2 00		    mov dl, T_CLASS_POS_X
- 000000DC  E8 00000000 E	    call BufGotoxy
-				
-				    ; --- Filled portion: black on white ---
- 000000E1  50			    push eax
- 000000E2  B8 000000F0		    mov eax, black + (white * 16)
- 000000E7  E8 00000000 E	    call BufSetTextColor
- 000000EC  58			    pop eax
-				
- 000000ED  51			    push ecx
- 000000EE  B9 00000000		    mov ecx, 0
- 000000F3			    filled_loop:
- 000000F3  3B CB		        cmp ecx, ebx
- 000000F5  7D 0B		        jge filled_done
- 000000F7  8A 04 31		        mov al, BYTE PTR [esi + ecx]
- 000000FA  E8 00000000 E	        call BufWriteChar
- 000000FF  41			        inc ecx
- 00000100  EB F1		        jmp filled_loop
- 00000102			    filled_done:
- 00000102  59			    pop ecx
-				
-				    ; --- Remaining portion: white on black ---
- 00000103  50			    push eax
- 00000104  B8 0000000F		    mov eax, white + (black * 16)
- 00000109  E8 00000000 E	    call BufSetTextColor
- 0000010E  58			    pop eax
-				
-				    ; cursor already at col ebx from BufWriteChar
- 0000010F  51			    push ecx
- 00000110  8B CB		    mov ecx, ebx
- 00000112			    remaining_loop:
-				        .if curr_timer == 0
- 0000011B  83 F9 50		            cmp ecx, T_CLASS_CHAR_LENGTH
+ 000000B6  B9 00000000		    mov ecx, 0
+ 000000BB			    options_loop_start:
+				        .if cl == currMenuOption
+ 000000C3  B8 000000F0		            mov eax, black + (white * 16)
 				        .else
- 00000120  83 F9 50		            cmp ecx, T_LAB_CHAR_LENGTH
+ 000000CA  B8 0000000F		            mov eax, white + (black * 16)
 				        .endif
- 00000123  7D 0B		        jge remaining_done
- 00000125  8A 04 31		        mov al, BYTE PTR [esi + ecx]
- 00000128  E8 00000000 E	        call BufWriteChar
- 0000012D  41			        inc ecx
- 0000012E  EB E2		        jmp remaining_loop
- 00000130			    remaining_done:
- 00000130  59			    pop ecx
+ 000000CF  E8 00000000 E	        call BufSetTextColor
 				
- 00000131  5E			    pop esi
- 00000132  5A			    pop edx
- 00000133  59			    pop ecx
- 00000134  5B			    pop ebx
- 00000135  58			    pop eax
- 00000136  C3			    ret
- 00000137			DrawTimers ENDP
+ 000000D4  8A F1		        mov dh, cl
+ 000000D6  02 35 00000046 R	        add dh, menuOptionsStartRow
+ 000000DC  B2 00		        mov dl, 0
+ 000000DE  E8 00000000 E	        call BufGotoxy
 				
- 00000137			GetPenalty PROC
-				    .if curr_timer == 0
- 00000140  A1 00000008 R	        mov eax, timer_class
-				    .else
- 00000147  A1 0000005D R	        mov eax, timer_lab
-				    .endif
- 0000014C  83 F8 00		    cmp eax, 0
- 0000014F  7C 05		    jl penalty_applies
- 00000151  B8 00000000		    mov eax, 0
- 00000156			    penalty_applies:
- 00000156  F7 D8		    neg eax
- 00000158  BA 00000000		    mov edx, 0
- 0000015D  BB 000003E8		    mov ebx, 1000
- 00000162  F7 F3		    div ebx
- 00000164			    done:
- 00000164  C3			    ret
- 00000165			GetPenalty ENDP
+ 000000E3  8B C1		        mov eax, ecx
+ 000000E5  BE 00000028 R	        mov esi, OFFSET menuOptions
+ 000000EA  E8 00000000 E	        call FindArrString
 				
- 00000165			SwitchTimers PROC
- 00000165  C6 05 000000B2 R	    mov curr_timer, 1
-	   01
- 0000016C  E8 FFFFFE8F		    call StartTimers
- 00000171  C3			    ret
- 00000172			SwitchTimers ENDP
+ 000000EF  BA 00000028 R	        mov edx, OFFSET menuOptions
+ 000000F4  03 D0		        add edx, eax
+ 000000F6  E8 00000000 E	        call BufWriteString
 				
- 00000172			ApplyDinoPenalty PROC
- 00000172  80 3D 000000B2 R	    cmp curr_timer, 0
+ 000000FB  41			        inc ecx
+ 000000FC  3A 0D 00000044 R	        cmp cl, numOfMenuOptions
+ 00000102  75 B7		        jne options_loop_start
+				
+ 00000104  E8 00000000 E	    call FlushScreenBuffer
+ 00000109  C3			    ret
+ 0000010A			WriteMenu ENDP
+				
+ 0000010A			EnterPressed PROC
+ 0000010A  C3			    ret
+ 0000010B			EnterPressed ENDP
+				
+ 0000010B			Syllabus PROC
+ 0000010B  BA 00000088 R	    mov edx, OFFSET syllabusTextFile
+ 00000110  E8 00000000 E	    call OpenInputFile
+ 00000115  BA 00000095 R	    mov edx, OFFSET syllabusBuffer
+ 0000011A  B9 000007D0		    mov ecx, SYLLABUS_BUFFER_SIZE
+ 0000011F  E8 00000000 E	    call ReadFromFile
+ 00000124  C6 80 00000095 R	    mov BYTE PTR [syllabusBuffer + eax], 0
 	   00
- 00000179  74 1F		    je apply_to_quiz
 				
- 0000017B  81 2D 0000005D R	    sub timer_lab, 5000
-	   00001388
- 00000185  83 3D 0000005D R	    cmp timer_lab, 0
+ 0000012B  E8 00000000 E	    call BufClearScreen
+ 00000130  B8 0000000F		    mov eax, white + (black * 16)
+ 00000135  E8 00000000 E	    call BufSetTextColor
+ 0000013A  BA 00000095 R	    mov edx, OFFSET syllabusBuffer
+ 0000013F  E8 00000000 E	    call BufWriteString
+ 00000144  E8 00000000 E	    call FlushScreenBuffer
+ 00000149  E8 00000000 E	    call ReadChar
+ 0000014E  C3			    ret
+ 0000014F			Syllabus ENDP
+				
+ 0000014F			Credits PROC
+ 0000014F  BA 00000869 R	    mov edx, OFFSET creditsTextFile
+ 00000154  E8 00000000 E	    call OpenInputFile
+ 00000159  BA 00000875 R	    mov edx, OFFSET creditsBuffer
+ 0000015E  B9 000007D0		    mov ecx, CREDITS_BUFFER_SIZE
+ 00000163  E8 00000000 E	    call ReadFromFile
+ 00000168  C6 80 00000875 R	    mov BYTE PTR [creditsBuffer + eax], 0
 	   00
- 0000018C  7D 29		    jge adp_done
- 0000018E  C7 05 0000005D R	    mov timer_lab, 0
-	   00000000
- 00000198  EB 1D		    jmp adp_done
 				
- 0000019A			apply_to_quiz:
- 0000019A  81 2D 00000008 R	    sub timer_class, 5000
-	   00001388
- 000001A4  83 3D 00000008 R	    cmp timer_class, 0
+ 0000016F  E8 00000000 E	    call BufClearScreen
+ 00000174  B8 0000000F		    mov eax, white + (black * 16)
+ 00000179  E8 00000000 E	    call BufSetTextColor
+ 0000017E  BA 00000875 R	    mov edx, OFFSET creditsBuffer
+ 00000183  E8 00000000 E	    call BufWriteString
+ 00000188  E8 00000000 E	    call FlushScreenBuffer
+ 0000018D  E8 00000000 E	    call ReadChar
+ 00000192  C3			    ret
+ 00000193			Credits ENDP
+				
+				; OUT:
+				;   al: currDiffOption (0=easy, 1=med, 2=hard)
+ 00000193			DifficultyMenu PROC
+ 00000193  C6 05 00000086 R	    mov currDiffOption, 0
 	   00
- 000001AB  7D 0A		    jge adp_done
- 000001AD  C7 05 00000008 R	    mov timer_class, 0
-	   00000000
+ 0000019A			    rewrite_diff_menu:
+ 0000019A  E8 00000053		        call WriteDiffMenu
+ 0000019F			    diff_loop_start:
+ 0000019F  E8 00000000 E	        call ReadChar
+				        .if al == 0Dh
+ 000001A8  EB 42		            jmp diff_procedure_end
+				        .elseif al == 0
+				            .if ah == 72 ; UP ARROW
+				                .if currDiffOption > 0
+ 000001BE  FE 0D 00000086 R	                    dec currDiffOption
+ 000001C4  E8 00000029		                    call WriteDiffMenu
+				                .endif
+				            .elseif ah == 80 ; DOWN ARROW
+ 000001D0  A0 00000085 R	                mov al, numOfDiffOptions
+ 000001D5  FE C8		                dec al
+				                .if currDiffOption < al
+ 000001DF  FE 05 00000086 R	                    inc currDiffOption
+ 000001E5  E8 00000008		                    call WriteDiffMenu
+				                .endif
+				            .endif
+				        .endif
+ 000001EA  EB B3		        jmp diff_loop_start
+ 000001EC			        diff_procedure_end:
+ 000001EC  A0 00000086 R	    mov al, currDiffOption
+ 000001F1  C3			    ret
+ 000001F2			DifficultyMenu ENDP
 				
- 000001B7			adp_done:
- 000001B7  C3			    ret
- 000001B8			ApplyDinoPenalty ENDP
+ 000001F2			WriteDiffMenu PROC
+ 000001F2  E8 00000000 E	    call BufClearScreen
+				
+ 000001F7  B8 0000000F		    mov eax, white + (black * 16)
+ 000001FC  E8 00000000 E	    call BufSetTextColor
+ 00000201  B6 00		    mov dh, 0
+ 00000203  B2 00		    mov dl, 0
+ 00000205  E8 00000000 E	    call BufGotoxy
+ 0000020A  BA 00000003 R	    mov edx, OFFSET gameTitle
+ 0000020F  E8 00000000 E	    call BufWriteString
+				
+ 00000214  B9 00000000		    mov ecx, 0
+ 00000219			    diff_options_loop_start:
+				        .if cl == currDiffOption
+ 00000221  B8 000000F0		            mov eax, black + (white * 16)
+				        .else
+ 00000228  B8 0000000F		            mov eax, white + (black * 16)
+				        .endif
+ 0000022D  E8 00000000 E	        call BufSetTextColor
+				
+ 00000232  8A F1		        mov dh, cl
+ 00000234  02 35 00000046 R	        add dh, menuOptionsStartRow
+ 0000023A  B2 00		        mov dl, 0
+ 0000023C  E8 00000000 E	        call BufGotoxy
+				
+ 00000241  8B C1		        mov eax, ecx
+ 00000243  BE 00000047 R	        mov esi, OFFSET diffOptions
+ 00000248  E8 00000000 E	        call FindArrString
+				
+ 0000024D  BA 00000047 R	        mov edx, OFFSET diffOptions
+ 00000252  03 D0		        add edx, eax
+ 00000254  E8 00000000 E	        call BufWriteString
+				
+ 00000259  41			        inc ecx
+ 0000025A  3A 0D 00000085 R	        cmp cl, numOfDiffOptions
+ 00000260  75 B7		        jne diff_options_loop_start
+				
+ 00000262  E8 00000000 E	    call FlushScreenBuffer
+ 00000267  C3			    ret
+ 00000268			WriteDiffMenu ENDP
 				
 				END
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/27/26 18:57:29
-Timers.asm						     Symbols 2 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/27/26 19:06:09
+MainMenu.asm						     Symbols 2 - 1
 
 
 
@@ -370,40 +396,39 @@ Segments and Groups:
 
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
-_DATA  . . . . . . . . . . . . .	32 Bit	 000000B3 Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 000001B8 Para	  Public  'CODE'	
+_DATA  . . . . . . . . . . . . .	32 Bit	 00001049 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 00000268 Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
 
                 N a m e                 Type     Value    Attr
 
-ApplyDinoPenalty . . . . . . . .	P Near	 00000172 _TEXT	Length= 00000046 Public STDCALL
-  apply_to_quiz  . . . . . . . .	L Near	 0000019A _TEXT	
-  adp_done . . . . . . . . . . .	L Near	 000001B7 _TEXT	
+BufClearScreen . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 BufGotoxy  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 BufSetTextColor  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-BufWriteChar . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 BufWriteString . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CloseFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CloseHandle  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Clrscr . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 CreateOutputFile . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Credits  . . . . . . . . . . . .	P Near	 0000014F _TEXT	Length= 00000044 Public STDCALL
 Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-DrawTimers . . . . . . . . . . .	P Near	 0000008F _TEXT	Length= 000000A8 Public STDCALL
-  filled_loop  . . . . . . . . .	L Near	 000000F3 _TEXT	
-  filled_done  . . . . . . . . .	L Near	 00000102 _TEXT	
-  remaining_loop . . . . . . . .	L Near	 00000112 _TEXT	
-  remaining_done . . . . . . . .	L Near	 00000130 _TEXT	
+DifficultyMenu . . . . . . . . .	P Near	 00000193 _TEXT	Length= 0000005F Public STDCALL
+  rewrite_diff_menu  . . . . . .	L Near	 0000019A _TEXT	
+  diff_loop_start  . . . . . . .	L Near	 0000019F _TEXT	
+  diff_procedure_end . . . . . .	L Near	 000001EC _TEXT	
 DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+EnterPressed . . . . . . . . . .	P Near	 0000010A _TEXT	Length= 00000001 Public STDCALL
 ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FindArrString  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FlushScreenBuffer  . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandTail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -419,9 +444,6 @@ GetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 GetMaxXY . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetMseconds  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetNumberOfConsoleInputEvents  .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetPenalty . . . . . . . . . . .	P Near	 00000137 _TEXT	Length= 0000002E Public STDCALL
-  penalty_applies  . . . . . . .	L Near	 00000156 _TEXT	
-  done . . . . . . . . . . . . .	L Near	 00000164 _TEXT	
 GetProcessHeap . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetStdHandle . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetSystemTime  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -435,6 +457,10 @@ HeapFree . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 HeapSize . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 IsDigit  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 LocalFree  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+MainMenu . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000094 Public STDCALL
+  rewrite_menu . . . . . . . . .	L Near	 00000000 _TEXT	
+  main_loop_start  . . . . . . .	L Near	 00000005 _TEXT	
+  procedure_end  . . . . . . . .	L Near	 0000008E _TEXT	
 MessageBoxA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MsgBoxAsk  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MsgBox . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -469,16 +495,14 @@ SetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 SetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ShowFPUStack . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Sleep  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-StartTimers  . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000002F Public STDCALL
 StrLength  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_compare  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_copy . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_length . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_trim . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_ucase  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-SwitchTimers . . . . . . . . . .	P Near	 00000165 _TEXT	Length= 0000000D Public STDCALL
+Syllabus . . . . . . . . . . . .	P Near	 0000010B _TEXT	Length= 00000044 Public STDCALL
 SystemTimeToFileTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-UpdateTimers . . . . . . . . . .	P Near	 0000002F _TEXT	Length= 00000060 Public STDCALL
 WaitMsg  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteBinB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteBin . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -487,11 +511,15 @@ WriteConsoleA  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 WriteConsoleOutputAttribute  . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteConsoleOutputCharacterA . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteDec . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteDiffMenu  . . . . . . . . .	P Near	 000001F2 _TEXT	Length= 00000076 Public STDCALL
+  diff_options_loop_start  . . .	L Near	 00000219 _TEXT	
 WriteFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteFloat . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteHexB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteHex . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteInt . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteMenu  . . . . . . . . . . .	P Near	 00000094 _TEXT	Length= 00000076 Public STDCALL
+  options_loop_start . . . . . .	L Near	 000000BB _TEXT	
 WriteStackFrameName  . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteStackFrame  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteString  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -519,6 +547,7 @@ ALT_MASK . . . . . . . . . . . .	Number	 00000003h
 CAPSLOCK_ON  . . . . . . . . . .	Number	 00000080h   
 CREATE_ALWAYS  . . . . . . . . .	Number	 00000002h   
 CREATE_NEW . . . . . . . . . . .	Number	 00000001h   
+CREDITS_BUFFER_SIZE  . . . . . .	Number	 000007D0h   
 CTRL_MASK  . . . . . . . . . . .	Number	 0000000Ch   
 CreateFile . . . . . . . . . . .	Text   	 CreateFileA
 DO_NOT_SHARE . . . . . . . . . .	Number	 00000000h   
@@ -630,18 +659,11 @@ SHIFT_PRESSED  . . . . . . . . .	Number	 00000010h
 STD_ERROR_HANDLE . . . . . . . .	Number	 -0000000Ch   
 STD_INPUT_HANDLE . . . . . . . .	Number	 -0000000Ah   
 STD_OUTPUT_HANDLE  . . . . . . .	Number	 -0000000Bh   
+SYLLABUS_BUFFER_SIZE . . . . . .	Number	 000007D0h   
 SetConsoleTitle  . . . . . . . .	Text   	 SetConsoleTitleA
 TAB  . . . . . . . . . . . . . .	Number	 00000009h   
 TRUE . . . . . . . . . . . . . .	Number	 00000001h   
 TRUNCATE_EXISTING  . . . . . . .	Number	 00000005h   
-T_CLASS_CHAR_LENGTH  . . . . . .	Number	 00000050h   
-T_CLASS_INITIAL  . . . . . . . .	Number	 0000C350h   
-T_CLASS_POS_X  . . . . . . . . .	Number	 00000000h   
-T_CLASS_POS_Y  . . . . . . . . .	Number	 00000018h   
-T_LAB_CHAR_LENGTH  . . . . . . .	Number	 00000050h   
-T_LAB_INITIAL  . . . . . . . . .	Number	 0000C350h   
-T_LAB_POS_X  . . . . . . . . . .	Number	 00000000h   
-T_LAB_POS_Y  . . . . . . . . . .	Number	 00000018h   
 VK_11  . . . . . . . . . . . . .	Number	 000000BDh   
 VK_12  . . . . . . . . . . . . .	Number	 000000BBh   
 VK_ADD . . . . . . . . . . . . .	Number	 0000006Bh   
@@ -726,10 +748,16 @@ WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
 black  . . . . . . . . . . . . .	Number	 00000000h   
 blue . . . . . . . . . . . . . .	Number	 00000001h   
 brown  . . . . . . . . . . . . .	Number	 00000006h   
-curr_timer . . . . . . . . . . .	Byte	 000000B2 _DATA	
-curr_time  . . . . . . . . . . .	DWord	 00000004 _DATA	
+chosenDifficulty . . . . . . . .	Byte	 00000087 _DATA	Public STDCALL
+creditsBuffer  . . . . . . . . .	Byte	 00000875 _DATA	
+creditsBytesRead . . . . . . . .	DWord	 00001045 _DATA	
+creditsTextFile  . . . . . . . .	Byte	 00000869 _DATA	
+currDiffOption . . . . . . . . .	Byte	 00000086 _DATA	
+currMenuOption . . . . . . . . .	Byte	 00000045 _DATA	
 cyan . . . . . . . . . . . . . .	Number	 00000003h   
+diffOptions  . . . . . . . . . .	Byte	 00000047 _DATA	
 exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
+gameTitle  . . . . . . . . . . .	Byte	 00000003 _DATA	
 gray . . . . . . . . . . . . . .	Number	 00000008h   
 green  . . . . . . . . . . . . .	Number	 00000002h   
 lightBlue  . . . . . . . . . . .	Number	 00000009h   
@@ -739,12 +767,16 @@ lightGreen . . . . . . . . . . .	Number	 0000000Ah
 lightMagenta . . . . . . . . . .	Number	 0000000Dh   
 lightRed . . . . . . . . . . . .	Number	 0000000Ch   
 magenta  . . . . . . . . . . . .	Number	 00000005h   
-prev_time  . . . . . . . . . . .	DWord	 00000000 _DATA	
+menuOptionsStartRow  . . . . . .	Byte	 00000046 _DATA	
+menuOptions  . . . . . . . . . .	Byte	 00000028 _DATA	
+newLine  . . . . . . . . . . . .	Byte	 00000001 _DATA	
+numOfDiffOptions . . . . . . . .	Byte	 00000085 _DATA	
+numOfMenuOptions . . . . . . . .	Byte	 00000044 _DATA	
 red  . . . . . . . . . . . . . .	Number	 00000004h   
-t_class_text . . . . . . . . . .	Byte	 0000000C _DATA	
-t_lab_text . . . . . . . . . . .	Byte	 00000061 _DATA	
-timer_class  . . . . . . . . . .	DWord	 00000008 _DATA	
-timer_lab  . . . . . . . . . . .	DWord	 0000005D _DATA	
+space  . . . . . . . . . . . . .	Byte	 00000000 _DATA	
+syllabusBuffer . . . . . . . . .	Byte	 00000095 _DATA	
+syllabusBytesRead  . . . . . . .	DWord	 00000865 _DATA	
+syllabusTextFile . . . . . . . .	Byte	 00000088 _DATA	
 white  . . . . . . . . . . . . .	Number	 0000000Fh   
 wsprintf . . . . . . . . . . . .	Text   	 wsprintfA
 yellow . . . . . . . . . . . . .	Number	 0000000Eh   
