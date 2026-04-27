@@ -18,11 +18,11 @@ ANSWER_MAX_LEN   = 20
 .data
 
 quizFileEasy BYTE "quiz_questions_easy.txt", 0
-quizFileMed  BYTE "quiz_questions_med.txt", 0
+quizFileMed  BYTE "quiz_questions_medium.txt", 0
 quizFileHard BYTE "quiz_questions_hard.txt", 0
 
 labFileEasy  BYTE "lab_questions_easy.txt", 0
-labFileMed   BYTE "lab_questions_med.txt", 0
+labFileMed   BYTE "lab_questions_medium.txt", 0
 labFileHard  BYTE "lab_questions_hard.txt", 0
 
 ; Quiz data

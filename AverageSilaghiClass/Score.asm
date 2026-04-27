@@ -7,11 +7,11 @@ GetPenalty PROTO
 
 .data
 quizAnswerFileEasy BYTE "quiz_answers_easy.txt", 0
-quizAnswerFileMed  BYTE "quiz_answers_med.txt", 0
+quizAnswerFileMed  BYTE "quiz_answers_medium.txt", 0
 quizAnswerFileHard BYTE "quiz_answers_hard.txt", 0
 
 labAnswerFileEasy  BYTE "lab_answers_easy.txt", 0
-labAnswerFileMed   BYTE "lab_answers_med.txt", 0
+labAnswerFileMed   BYTE "lab_answers_medium.txt", 0
 labAnswerFileHard  BYTE "lab_answers_hard.txt", 0
 
 ANSWER_BUF_SIZE = 200
