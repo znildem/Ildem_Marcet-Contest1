@@ -87,6 +87,12 @@ BufWriteString PROC
     mov esi, edx
 
     bws_loop:
+		
+		cmp bufCursorY, SCREEN_HEIGHT
+        jae bws_done
+        cmp bufCursorX, SCREEN_WIDTH
+        jae bws_newline
+
 		mov al, BYTE PTR [esi]
         cmp al, 0
         je bws_done

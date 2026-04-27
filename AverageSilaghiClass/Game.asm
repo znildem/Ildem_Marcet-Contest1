@@ -17,6 +17,7 @@ BufWriteString PROTO
 BufWriteChar PROTO
 BufClearScreen PROTO
 FlushScreenBuffer PROTO
+BufWriteDec PROTO
 
 DinoInit PROTO
 DinoTick PROTO
@@ -71,9 +72,9 @@ DrawEndScreen PROC
     call BufGotoxy
     mov edx, OFFSET scoreQuizLabel
     call BufWriteString
-    ; WriteDec writes directly to console - write score digits manually
+    ; BufWriteDec writes directly to console - write score digits manually
     mov eax, quizScore
-    call WriteDec
+    call BufWriteDec
     mov edx, OFFSET scoreSuffix50
     call BufWriteString
 
@@ -89,7 +90,7 @@ DrawEndScreen PROC
     mov edx, OFFSET scoreLabLabel
     call BufWriteString
     mov eax, labScore
-    call WriteDec
+    call BufWriteDec
     mov edx, OFFSET scoreSuffix50
     call BufWriteString
 
@@ -103,7 +104,7 @@ DrawEndScreen PROC
     call BufWriteString
     mov eax, quizScore
     add eax, labScore
-    call WriteDec
+    call BufWriteDec
     mov edx, OFFSET scoreSuffix100
     call BufWriteString
 

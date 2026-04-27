@@ -3,10 +3,10 @@
 INCLUDE Irvine32.inc
 
 GetAsyncKeyState PROTO, vKey:DWORD
-GetMseconds PROTO
 
 VK_SPACE  = 20h
 VK_UP     = 26h
+VK_DOWN   = 28h
 
 .data
 PUBLIC DinoInit
@@ -22,181 +22,273 @@ EXTERN dinoGameOver:BYTE
 EXTERN cactusType:BYTE
 EXTERN cactusHeight:BYTE
 EXTERN cactusSpeed:SDWORD
-
-dinoStartTime     DWORD ?
-dinoRoundDone     BYTE 0
-dinoRoundSuccess  BYTE 0
-prevCactusX       SDWORD ?
+EXTERN birdFrame:BYTE
+EXTERN dinoDuck:BYTE
+EXTERN controlsX:SDWORD
+EXTERN controlsDone:BYTE
 
 .code
 
-; ---------------------------------------------------------
-; Initialize dino round
-; ---------------------------------------------------------
 DinoInit PROC
-    mov dinoY, 0
-    mov dinoVy, 0
-    mov cactusX, 40
-    mov prevCactusX, 40
-    mov dinoScore, 0
-    mov dinoGameOver, 0
-    mov cactusType, 0
-    mov cactusHeight, 0
-    mov cactusSpeed, 2
-
-    mov dinoRoundDone, 0
-    mov dinoRoundSuccess, 0
-
-    call GetMseconds
-    mov dinoStartTime, eax
-    ret
+	mov dinoY, 0
+	mov dinoVy, 0
+	mov cactusX, 40
+	mov dinoScore, 0
+	mov dinoGameOver, 0
+	mov cactusType, 0
+	mov cactusHeight, 0
+	mov cactusSpeed, 1
+	mov birdFrame, 0
+	mov dinoDuck, 0
+	mov controlsX, 24
+	mov controlsDone, 0
+	ret
 DinoInit ENDP
 
-; Tick logic — runs every frame
 DinoTick PROC
+	; If game over, press Space to reset
+	.if dinoGameOver == 1
+		invoke GetAsyncKeyState, VK_SPACE
+		test ax, 8000h
+		jz tick_end
 
-    ; If already finished, do nothing
-    .if dinoRoundDone == 1
-        jmp tick_end
-    .endif
+		call DinoInit
+		jmp tick_end
+	.endif
 
-    ; If collision happened ? fail immediately
-    .if dinoGameOver == 1
-        mov dinoRoundDone, 1
-        mov dinoRoundSuccess, 0
-        jmp tick_end
-    .endif
+	; Duck with Down Arrow only while on ground
+	mov dinoDuck, 0
+	invoke GetAsyncKeyState, VK_DOWN
+	test ax, 8000h
+	jz check_jump_input
 
-    ; INPUT: Jump
-    invoke GetAsyncKeyState, VK_SPACE
-    test ax, 8000h
-    jnz try_jump
+	mov eax, dinoY
+	cmp eax, 0
+	jne check_jump_input
 
-    invoke GetAsyncKeyState, VK_UP
-    test ax, 8000h
-    jz skip_input
+	mov dinoDuck, 1
+
+check_jump_input:
+
+	; Jump on Space or Up Arrow only if on ground
+	invoke GetAsyncKeyState, VK_SPACE
+	test ax, 8000h
+	jnz try_jump
+
+	invoke GetAsyncKeyState, VK_UP
+	test ax, 8000h
+	jz skip_input
 
 try_jump:
-    mov eax, dinoY
-    cmp eax, 0
-    jne skip_input
-    mov dinoVy, 5
+	mov eax, dinoY
+	cmp eax, 0
+	jne skip_input
+
+	mov dinoVy, 5
 
 skip_input:
 
-    ; Physics
-    mov eax, dinoY
-    add eax, dinoVy
-    mov dinoY, eax
+	; Move controls text from right to left once
+	cmp controlsDone, 1
+	je skip_controls_move
 
-    mov eax, dinoVy
-    sub eax, 1
-    mov dinoVy, eax
+	mov eax, controlsX
+	dec eax
+	mov controlsX, eax
 
-    ; Clamp to ground
-    mov eax, dinoY
-    cmp eax, 0
-    jge skip_ground
-    mov dinoY, 0
-    mov dinoVy, 0
-skip_ground:
+	cmp eax, 2
+	jge skip_controls_move
 
-    ; Move cactus
-    mov eax, cactusX
-    mov prevCactusX, eax
-    sub eax, cactusSpeed
-    mov cactusX, eax
+	mov controlsDone, 1
 
-    ; Reset cactus when passed
-    cmp eax, 0
-    jge skip_reset
+skip_controls_move:
 
-    mov cactusX, 40
-    inc dinoScore
+	; dinoY += dinoVy
+	mov eax, dinoY
+	add eax, dinoVy
+	mov dinoY, eax
 
-    ; Increase speed every 10 points
-    mov eax, dinoScore
-    mov ebx, 10
-    mov edx, 0
-    div ebx
-    cmp edx, 0
-    jne skip_speed
-    cmp cactusSpeed, 5
-    jge skip_speed
-    inc cactusSpeed
-skip_speed:
+	; dinoVy -= 1
+	mov eax, dinoVy
+	sub eax, 1
+	mov dinoVy, eax
 
-    ; Random type
-    mov eax, 2
-    call RandomRange
-    mov cactusType, al
+	; clamp to ground
+	mov eax, dinoY
+	cmp eax, 0
+	jge skip_ground_clamp
 
-    ; Random height
-    mov eax, 3
-    call RandomRange
-    mov cactusHeight, al
+	mov dinoY, 0
+	mov dinoVy, 0
 
-skip_reset:
-    ; Collision detection
-    movzx ebx, cactusType
-    cmp ebx, 0
-    je small_cactus
+skip_ground_clamp:
 
-    ; Large cactus hit window: x = 7..14
-    mov ecx, 7
-    mov edx, 14
-    jmp check_x
+	; move cactus left
+	mov eax, cactusX
+	sub eax, cactusSpeed
+	mov cactusX, eax
 
-small_cactus:
-    ; Small cactus hit window: x = 7..12
-    mov ecx, 7
-    mov edx, 12
+	; toggle bird animation frame
+	mov al, birdFrame
+	xor al, 1
+	mov birdFrame, al
 
-check_x:
-    mov eax, cactusX
-    cmp eax, edx
-    jg check_success
+	; reset cactus and increment score
+	cmp eax, 0
+	jge skip_cactus_reset
 
-    mov eax, prevCactusX
-    cmp eax, ecx
-    jl check_success
+	mov cactusX, 40
+	inc dinoScore
 
-    ; Vertical collision
-    movzx ebx, cactusHeight
-    add ebx, 2
-    mov eax, dinoY
-    cmp eax, ebx
-    jg check_success
+	; increase speed every 5 points
+	mov eax, dinoScore
+	mov ebx, 10
+	mov edx, 0
+	div ebx
+	cmp edx, 0
+	jne skip_speed_increase
 
-    ; COLLISION => FAIL
-    mov dinoGameOver, 1
-    mov dinoRoundDone, 1
-    mov dinoRoundSuccess, 0
-    jmp tick_end
+	cmp cactusSpeed, 5
+	jge skip_speed_increase
+	inc cactusSpeed
 
-; SUCCESS CHECK (10 seconds)
-check_success:
-    call GetMseconds
-    sub eax, dinoStartTime
-    cmp eax, 10000        ; 10 seconds
-    jl tick_end
+skip_speed_increase:
 
-    mov dinoRoundDone, 1
-    mov dinoRoundSuccess, 1
+	; Choose obstacle type
+	; Early game: 0 = small, 1 = large, 2 = flying
+	; After score 5: birds become more common
+
+	mov eax, dinoScore
+	cmp eax, 5
+	jl normal_obstacle_random
+
+	; Higher score: 50% chance bird
+	mov eax, 2
+	call RandomRange
+	cmp eax, 0
+	je make_bird
+
+	; Otherwise choose small or large cactus
+	mov eax, 2
+	call RandomRange
+	mov cactusType, al
+	jmp obstacle_type_done
+
+make_bird:
+	mov cactusType, 2
+	jmp obstacle_type_done
+
+normal_obstacle_random:
+	mov eax, 3
+	call RandomRange
+	mov cactusType, al
+
+obstacle_type_done:
+
+	; Random height depends on type
+	movzx eax, cactusType
+	cmp eax, 2
+	je set_flying_height
+
+	; random height (0,1,2)
+	mov eax, 3
+	call RandomRange
+	mov cactusHeight, al
+	jmp done_height
+
+set_flying_height:
+	; flying enemy: height 3..8 (within dino reach)
+	mov eax, 6
+	call RandomRange
+	add eax, 3
+	mov cactusHeight, al
+
+done_height:
+
+skip_cactus_reset:
+
+	; collision check
+	mov eax, cactusX
+	cmp eax, 8
+	jl tick_end
+
+	movzx ebx, cactusType
+	cmp ebx, 2
+	je bird_collision
+	cmp ebx, 0
+	je normal_width
+
+	; large cactus
+	cmp eax, 11
+	jg tick_end
+	jmp check_height
+
+bird_collision: 
+	; Bird X-range: 7-12
+	mov eax, cactusX
+	cmp eax, 7
+	jl tick_end
+	cmp eax, 12
+	jg tick_end
+
+	; If ducking on ground, dodge bird
+	cmp dinoDuck, 1
+	je tick_end
+
+	; Bird Y-range: cactusHeight + 2
+	movzx ebx, cactusHeight
+	add ebx, 2
+	mov ecx, dinoY
+	cmp ecx, ebx
+	jg tick_end
+
+	mov dinoGameOver, 1
+	jmp tick_end
+
+
+normal_width:
+	cmp eax, 10
+	jg tick_end
+
+check_height:
+	movzx ebx, cactusHeight
+	inc ebx
+	mov eax, dinoY
+	cmp eax, ebx
+	jg tick_end
+
+	mov dinoGameOver, 1
 
 tick_end:
-    ret
+	ret
 DinoTick ENDP
 
-; Query functions for Game.asm
 DinoIsDone PROC
-    mov al, dinoRoundDone
-    ret
+	mov eax, dinoScore
+	cmp eax, 6
+	jge dino_done
+
+	cmp dinoGameOver, 1
+	je dino_done
+
+	mov al, 0
+	ret
+
+dino_done:
+	mov al, 1
+	ret
 DinoIsDone ENDP
 
 DinoWasSuccess PROC
-    mov al, dinoRoundSuccess
-    ret
+	cmp dinoGameOver, 1
+	je dino_failed
+
+	mov al, 1
+	ret
+
+dino_failed:
+	mov al, 0
+	ret
 DinoWasSuccess ENDP
 
 END
