@@ -9,6 +9,7 @@ StartTimers PROTO
 UpdateTimers PROTO
 DrawTimers PROTO
 SwitchTimers PROTO
+ResetTimers PROTO
 HandleInput PROTO
 
 BufGotoxy PROTO
@@ -301,6 +302,7 @@ DrawEndScreen ENDP
 
 Game PROC
     mov currState, 0
+	call ResetTimers
 
     ; STATE 0: start screen
     call BufClearScreen

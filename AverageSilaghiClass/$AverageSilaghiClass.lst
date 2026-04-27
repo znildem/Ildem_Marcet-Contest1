@@ -1,9 +1,10 @@
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/27/26 19:32:41
-Test.asm						     Page 1 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/27/26 19:38:28
+Timers.asm						     Page 1 - 1
 
 
-				; Handles quiz/lab question loading and display
-
+				; Timers handling will be done in this file
+				; This does NOT handle midnight change, just dont play at midnight :P
+				
 				INCLUDE Irvine32.inc
 			      C ; Include file for Irvine32.lib             (Irvine32.inc)
 			      C 
@@ -22,671 +23,268 @@ Test.asm						     Page 1 - 1
 			      C .NOLIST
 			      C .LIST
 			      C 
-
+				
+				FindArrString PROTO
 				BufGotoxy PROTO
 				BufSetTextColor PROTO
 				BufWriteString PROTO
 				BufWriteChar PROTO
-
- = 00000001			QUIZ_PANEL_LEFT  = 1
- = 00000027			LAB_PANEL_LEFT   = 39
- = 00000001			PANEL_TOP        = 1
-
- = 00000014			MAX_QUESTIONS    = 20
- = 000007D0			QUESTION_BUF_SIZE = 2000
- = 00000014			ANSWER_MAX_LEN   = 20
-
+				
  00000000			.data
-
- 00000000 71 75 69 7A 5F	quizFileEasy BYTE "quiz_questions_easy.txt", 0
-	   71 75 65 73 74
-	   69 6F 6E 73 5F
-	   65 61 73 79 2E
-	   74 78 74 00
- 00000018 71 75 69 7A 5F	quizFileMed  BYTE "quiz_questions_medium.txt", 0
-	   71 75 65 73 74
-	   69 6F 6E 73 5F
-	   6D 65 64 69 75
-	   6D 2E 74 78 74
+				; Last call time
+ 00000000 00000000		prev_time DWORD ?
+ 00000004 00000000		curr_time DWORD ?
+				
+				; Timer for the quiz duration
+ = 0000C350			T_CLASS_INITIAL = 50000 ; 50 seconds in ms
+ = 00000050			T_CLASS_CHAR_LENGTH = 80
+ = 00000000			T_CLASS_POS_X = 0
+ = 00000018			T_CLASS_POS_Y = 24
+ 00000008 00000000		timer_class DWORD ?
+ 0000000C 51 55 49 5A 20	t_class_text BYTE "QUIZ DEADLINE                                                                   ", 0
+	   44 45 41 44 4C
+	   49 4E 45 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
 	   00
- 00000032 71 75 69 7A 5F	quizFileHard BYTE "quiz_questions_hard.txt", 0
-	   71 75 65 73 74
-	   69 6F 6E 73 5F
-	   68 61 72 64 2E
-	   74 78 74 00
-
- 0000004A 6C 61 62 5F 71	labFileEasy  BYTE "lab_questions_easy.txt", 0
-	   75 65 73 74 69
-	   6F 6E 73 5F 65
-	   61 73 79 2E 74
-	   78 74 00
- 00000061 6C 61 62 5F 71	labFileMed   BYTE "lab_questions_medium.txt", 0
-	   75 65 73 74 69
-	   6F 6E 73 5F 6D
-	   65 64 69 75 6D
-	   2E 74 78 74 00
- 0000007A 6C 61 62 5F 71	labFileHard  BYTE "lab_questions_hard.txt", 0
-	   75 65 73 74 69
-	   6F 6E 73 5F 68
-	   61 72 64 2E 74
-	   78 74 00
-
-				; Quiz data
- 00000091  000007D0 [		quizBuffer       BYTE QUESTION_BUF_SIZE DUP(?)
-	    00
-	   ]
- 00000861 00000000		quizBytesRead    DWORD ?
- 00000865  00000014 [		quizOffsets      DWORD MAX_QUESTIONS DUP(?)
-	    00000000
-	   ]
- 000008B5  00000014 [		quizBlankStart   BYTE  MAX_QUESTIONS DUP(?)
-	    00
-	   ]
- 000008C9  00000014 [		quizBlankLen     BYTE  MAX_QUESTIONS DUP(?)
-	    00
-	   ]
- 000008DD 00			numQuizQuestions BYTE 0
- 000008DE  00000190 [		quizAnswers      BYTE MAX_QUESTIONS * ANSWER_MAX_LEN DUP(0)
-	    00
-	   ]
-
-				; Lab data
- 00000A6E  000007D0 [		labBuffer        BYTE QUESTION_BUF_SIZE DUP(?)
-	    00
-	   ]
- 0000123E 00000000		labBytesRead     DWORD ?
- 00001242  00000014 [		labOffsets       DWORD MAX_QUESTIONS DUP(?)
-	    00000000
-	   ]
- 00001292  00000014 [		labBlankStart    BYTE  MAX_QUESTIONS DUP(?)
-	    00
-	   ]
- 000012A6  00000014 [		labBlankLen      BYTE  MAX_QUESTIONS DUP(?)
-	    00
-	   ]
- 000012BA 00			numLabQuestions  BYTE 0
- 000012BB  00000190 [		labAnswers       BYTE MAX_QUESTIONS * ANSWER_MAX_LEN DUP(0)
-	    00
-	   ]
-
-				; Which set is active for input: 0=quiz 1=lab
- 0000144B 00			activeSet        BYTE 0
-
-				PUBLIC currQuestion
- 0000144C 00			currQuestion     BYTE 0
-
-				; Scratch vars to avoid mul clobbering edx in draw procs
- 0000144D 00000000		draw_col_save    DWORD 0
- 00001451 00			draw_answer_char BYTE 0
-
+				
+				; Timer for the lab duration
+ = 0000C350			T_LAB_INITIAL = 50000 ; 50 seconds in ms
+ = 00000050			T_LAB_CHAR_LENGTH = 80
+ = 00000000			T_LAB_POS_X = 0
+ = 00000018			T_LAB_POS_Y = 24
+ 0000005D 00000000		timer_lab DWORD ?
+ 00000061 4C 41 42 20 44	t_lab_text BYTE "LAB DEADLINE                                                                    ", 0
+	   45 41 44 4C 49
+	   4E 45 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   20 20 20 20 20
+	   00
+				
+ 000000B2 00			curr_timer BYTE 0
+				
  00000000			.code
-				PUBLIC LoadQuiz
-				PUBLIC LoadLab
-				PUBLIC DrawQuiz
-				PUBLIC DrawLab
-				PUBLIC GetCurrQuestion
-				PUBLIC GetNumQuestions
-				PUBLIC GetBlankLen
-				PUBLIC GetAnswerBuf
-
-				; --- ParseQuiz: parses quizBuffer into quiz arrays ---
- 00000000			ParseQuiz PROC
- 00000000  50			    push eax
- 00000001  53			    push ebx
- 00000002  51			    push ecx
- 00000003  52			    push edx
- 00000004  56			    push esi
- 00000005  57			    push edi
-
- 00000006  B9 00000190		    mov ecx, MAX_QUESTIONS * ANSWER_MAX_LEN
- 0000000B  BF 000008DE R	    mov edi, OFFSET quizAnswers
- 00000010  33 C0		    xor eax, eax
- 00000012  F3/ AA		    rep stosb
- 00000014  B9 00000014		    mov ecx, MAX_QUESTIONS
- 00000019  BF 000008B5 R	    mov edi, OFFSET quizBlankStart
- 0000001E  F3/ AA		    rep stosb
- 00000020  B9 00000014		    mov ecx, MAX_QUESTIONS
- 00000025  BF 000008C9 R	    mov edi, OFFSET quizBlankLen
- 0000002A  F3/ AA		    rep stosb
-
- 0000002C  C6 05 000008DD R	    mov numQuizQuestions, 0
-	   00
- 00000033  BE 00000091 R	    mov esi, OFFSET quizBuffer
- 00000038  BA 00000000		    mov edx, 0
- 0000003D  B9 00000000		    mov ecx, 0
-
- 00000042			    qp_loop:
- 00000042  8A 1C 32		        mov bl, BYTE PTR [esi + edx]
- 00000045  80 FB 00		        cmp bl, 0
- 00000048  74 6E		        je qp_done
- 0000004A  80 FB 0A		        cmp bl, 0Ah
- 0000004D  74 2E		        je qp_newline
- 0000004F  80 FB 5F		        cmp bl, '_'
- 00000052  75 61		        jne qp_next
-
- 00000054  0F B6 1D		        movzx ebx, numQuizQuestions
-	   000008DD R
- 0000005B  80 BB 000008C9 R	        cmp BYTE PTR quizBlankLen[ebx], 0
-	   00
- 00000062  75 0A		        jne qp_count
- 00000064  8B C2		        mov eax, edx
- 00000066  2B C1		        sub eax, ecx
- 00000068  88 83 000008B5 R	        mov BYTE PTR quizBlankStart[ebx], al
-
- 0000006E			        qp_count:
- 0000006E  0F B6 1D		        movzx ebx, numQuizQuestions
-	   000008DD R
- 00000075  FE 83 000008C9 R	        inc BYTE PTR quizBlankLen[ebx]
- 0000007B  EB 38		        jmp qp_next
-
- 0000007D			        qp_newline:
- 0000007D  0F B6 1D		        movzx ebx, numQuizQuestions
-	   000008DD R
- 00000084  89 0C 9D		        mov quizOffsets[ebx * 4], ecx
-	   00000865 R
- 0000008B  FE 05 000008DD R	        inc numQuizQuestions
- 00000091  A0 000008DD R	        mov al, numQuizQuestions
- 00000096  3C 14		        cmp al, MAX_QUESTIONS
- 00000098  7D 1E		        jge qp_done
- 0000009A  0F B6 1D		        movzx ebx, numQuizQuestions
-	   000008DD R
- 000000A1  C6 83 000008B5 R	        mov BYTE PTR quizBlankStart[ebx], 0
-	   00
- 000000A8  C6 83 000008C9 R	        mov BYTE PTR quizBlankLen[ebx], 0
-	   00
- 000000AF  8B CA		        mov ecx, edx
- 000000B1  41			        inc ecx
- 000000B2  42			        inc edx
- 000000B3  EB 8D		        jmp qp_loop
-
- 000000B5			        qp_next:
- 000000B5  42			        inc edx
- 000000B6  EB 8A		        jmp qp_loop
-
- 000000B8			    qp_done:
- 000000B8  3B D1		    cmp edx, ecx
- 000000BA  74 14		    je qp_skip
- 000000BC  0F B6 1D		    movzx ebx, numQuizQuestions
-	   000008DD R
- 000000C3  89 0C 9D		    mov quizOffsets[ebx * 4], ecx
-	   00000865 R
- 000000CA  FE 05 000008DD R	    inc numQuizQuestions
- 000000D0			    qp_skip:
-
- 000000D0  C6 05 0000144C R	    mov currQuestion, 0
-	   00
- 000000D7  C6 05 0000144B R	    mov activeSet, 0
-	   00
-
- 000000DE  5F			    pop edi
- 000000DF  5E			    pop esi
- 000000E0  5A			    pop edx
- 000000E1  59			    pop ecx
- 000000E2  5B			    pop ebx
- 000000E3  58			    pop eax
- 000000E4  C3			    ret
- 000000E5			ParseQuiz ENDP
-
-				; --- ParseLab: parses labBuffer into lab arrays ---
- 000000E5			ParseLab PROC
- 000000E5  50			    push eax
- 000000E6  53			    push ebx
- 000000E7  51			    push ecx
- 000000E8  52			    push edx
- 000000E9  56			    push esi
- 000000EA  57			    push edi
-
- 000000EB  B9 00000190		    mov ecx, MAX_QUESTIONS * ANSWER_MAX_LEN
- 000000F0  BF 000012BB R	    mov edi, OFFSET labAnswers
- 000000F5  33 C0		    xor eax, eax
- 000000F7  F3/ AA		    rep stosb
- 000000F9  B9 00000014		    mov ecx, MAX_QUESTIONS
- 000000FE  BF 00001292 R	    mov edi, OFFSET labBlankStart
- 00000103  F3/ AA		    rep stosb
- 00000105  B9 00000014		    mov ecx, MAX_QUESTIONS
- 0000010A  BF 000012A6 R	    mov edi, OFFSET labBlankLen
- 0000010F  F3/ AA		    rep stosb
-
- 00000111  C6 05 000012BA R	    mov numLabQuestions, 0
-	   00
- 00000118  BE 00000A6E R	    mov esi, OFFSET labBuffer
- 0000011D  BA 00000000		    mov edx, 0
- 00000122  B9 00000000		    mov ecx, 0
-
- 00000127			    lp_loop:
- 00000127  8A 1C 32		        mov bl, BYTE PTR [esi + edx]
- 0000012A  80 FB 00		        cmp bl, 0
- 0000012D  74 6E		        je lp_done
- 0000012F  80 FB 0A		        cmp bl, 0Ah
- 00000132  74 2E		        je lp_newline
- 00000134  80 FB 5F		        cmp bl, '_'
- 00000137  75 61		        jne lp_next
-
- 00000139  0F B6 1D		        movzx ebx, numLabQuestions
-	   000012BA R
- 00000140  80 BB 000012A6 R	        cmp BYTE PTR labBlankLen[ebx], 0
-	   00
- 00000147  75 0A		        jne lp_count
- 00000149  8B C2		        mov eax, edx
- 0000014B  2B C1		        sub eax, ecx
- 0000014D  88 83 00001292 R	        mov BYTE PTR labBlankStart[ebx], al
-
- 00000153			        lp_count:
- 00000153  0F B6 1D		        movzx ebx, numLabQuestions
-	   000012BA R
- 0000015A  FE 83 000012A6 R	        inc BYTE PTR labBlankLen[ebx]
- 00000160  EB 38		        jmp lp_next
-
- 00000162			        lp_newline:
- 00000162  0F B6 1D		        movzx ebx, numLabQuestions
-	   000012BA R
- 00000169  89 0C 9D		        mov labOffsets[ebx * 4], ecx
-	   00001242 R
- 00000170  FE 05 000012BA R	        inc numLabQuestions
- 00000176  A0 000012BA R	        mov al, numLabQuestions
- 0000017B  3C 14		        cmp al, MAX_QUESTIONS
- 0000017D  7D 1E		        jge lp_done
- 0000017F  0F B6 1D		        movzx ebx, numLabQuestions
-	   000012BA R
- 00000186  C6 83 00001292 R	        mov BYTE PTR labBlankStart[ebx], 0
-	   00
- 0000018D  C6 83 000012A6 R	        mov BYTE PTR labBlankLen[ebx], 0
-	   00
- 00000194  8B CA		        mov ecx, edx
- 00000196  41			        inc ecx
- 00000197  42			        inc edx
- 00000198  EB 8D		        jmp lp_loop
-
- 0000019A			        lp_next:
- 0000019A  42			        inc edx
- 0000019B  EB 8A		        jmp lp_loop
-
- 0000019D			    lp_done:
- 0000019D  3B D1		    cmp edx, ecx
- 0000019F  74 14		    je lp_skip
- 000001A1  0F B6 1D		    movzx ebx, numLabQuestions
-	   000012BA R
- 000001A8  89 0C 9D		    mov labOffsets[ebx * 4], ecx
-	   00001242 R
- 000001AF  FE 05 000012BA R	    inc numLabQuestions
- 000001B5			    lp_skip:
-
- 000001B5  C6 05 0000144C R	    mov currQuestion, 0
-	   00
- 000001BC  C6 05 0000144B R	    mov activeSet, 1
+				PUBLIC UpdateTimers
+				PUBLIC StartTimers
+				PUBLIC SwitchTimers
+				PUBLIC DrawTimers
+				PUBLIC GetPenalty
+				PUBLIC ApplyDinoPenalty
+				PUBLIC ResetTimers
+				
+ 00000000			StartTimers PROC
+ 00000000  E8 00000000 E	    call GetMseconds
+ 00000005  A3 00000000 R	    mov prev_time, eax
+				
+				    .if curr_timer == 0
+ 00000013  C7 05 00000008 R	        mov timer_class, T_CLASS_INITIAL
+	   0000C350
+				    .else
+ 0000001F  C7 05 0000005D R	        mov timer_lab, T_LAB_INITIAL
+	   0000C350
+				    .endif
+				
+ 00000029  E8 00000061		    call DrawTimers
+ 0000002E  C3			    ret
+ 0000002F			StartTimers ENDP
+				
+ 0000002F			UpdateTimers PROC
+ 0000002F  E8 00000000 E	    call GetMseconds
+ 00000034  A3 00000004 R	    mov curr_time, eax
+				
+				    .if curr_timer == 0
+ 00000042  A1 00000008 R	        mov eax, timer_class
+ 00000047  2B 05 00000004 R	        sub eax, curr_time
+ 0000004D  03 05 00000000 R	        add eax, prev_time
+				        .if eax < 0
+ 00000058  B8 00000000		            mov eax, 0
+				        .endif
+ 0000005D  A3 00000008 R	        mov timer_class, eax
+				    .else
+ 00000064  A1 0000005D R	        mov eax, timer_lab
+ 00000069  2B 05 00000004 R	        sub eax, curr_time
+ 0000006F  03 05 00000000 R	        add eax, prev_time
+				        .if eax < 0
+ 0000007A  B8 00000000		            mov eax, 0
+				        .endif
+ 0000007F  A3 0000005D R	        mov timer_lab, eax
+				    .endif
+				
+ 00000084  A1 00000004 R	    mov eax, curr_time
+ 00000089  A3 00000000 R	    mov prev_time, eax
+ 0000008E  C3			    ret
+ 0000008F			UpdateTimers ENDP
+				
+				; Draws the timer bar in two passes:
+				;   filled portion (black on white) from col 0 to fillLen
+				;   remaining portion (white on black) from fillLen to end
+ 0000008F			DrawTimers PROC
+ 0000008F  50			    push eax
+ 00000090  53			    push ebx
+ 00000091  51			    push ecx
+ 00000092  52			    push edx
+ 00000093  56			    push esi
+				
+				    ; Set text pointer and compute fill length
+				    .if curr_timer == 0
+ 0000009D  A1 00000008 R	        mov eax, timer_class
+ 000000A2  BE 0000000C R	        mov esi, OFFSET t_class_text
+ 000000A7  B9 00000050		        mov ecx, T_CLASS_CHAR_LENGTH
+ 000000AC  BB 0000C350		        mov ebx, T_CLASS_INITIAL
+				    .else
+ 000000B3  A1 0000005D R	        mov eax, timer_lab
+ 000000B8  BE 00000061 R	        mov esi, OFFSET t_lab_text
+ 000000BD  B9 00000050		        mov ecx, T_LAB_CHAR_LENGTH
+ 000000C2  BB 0000C350		        mov ebx, T_LAB_INITIAL
+				    .endif
+				
+				    ; fillLen = (timer * CHAR_LENGTH) / INITIAL
+ 000000C7  F7 E1		    mul ecx                 ; edx:eax = timer * CHAR_LENGTH
+ 000000C9  BA 00000000		    mov edx, 0
+ 000000CE  F7 F3		    div ebx                 ; eax = fillLen
+				    .if eax > ecx
+ 000000D4  8B C1		        mov eax, ecx
+				    .endif
+				
+ 000000D6  8B D8		    mov ebx, eax            ; ebx = fillLen
+				
+				    ; Position cursor at start of timer row
+ 000000D8  B6 18		    mov dh, T_CLASS_POS_Y
+ 000000DA  B2 00		    mov dl, T_CLASS_POS_X
+ 000000DC  E8 00000000 E	    call BufGotoxy
+				
+				    ; --- Filled portion: black on white ---
+ 000000E1  50			    push eax
+ 000000E2  B8 000000F0		    mov eax, black + (white * 16)
+ 000000E7  E8 00000000 E	    call BufSetTextColor
+ 000000EC  58			    pop eax
+				
+ 000000ED  51			    push ecx
+ 000000EE  B9 00000000		    mov ecx, 0
+ 000000F3			    filled_loop:
+ 000000F3  3B CB		        cmp ecx, ebx
+ 000000F5  7D 0B		        jge filled_done
+ 000000F7  8A 04 31		        mov al, BYTE PTR [esi + ecx]
+ 000000FA  E8 00000000 E	        call BufWriteChar
+ 000000FF  41			        inc ecx
+ 00000100  EB F1		        jmp filled_loop
+ 00000102			    filled_done:
+ 00000102  59			    pop ecx
+				
+				    ; --- Remaining portion: white on black ---
+ 00000103  50			    push eax
+ 00000104  B8 0000000F		    mov eax, white + (black * 16)
+ 00000109  E8 00000000 E	    call BufSetTextColor
+ 0000010E  58			    pop eax
+				
+				    ; cursor already at col ebx from BufWriteChar
+ 0000010F  51			    push ecx
+ 00000110  8B CB		    mov ecx, ebx
+ 00000112			    remaining_loop:
+				        .if curr_timer == 0
+ 0000011B  83 F9 50		            cmp ecx, T_CLASS_CHAR_LENGTH
+				        .else
+ 00000120  83 F9 50		            cmp ecx, T_LAB_CHAR_LENGTH
+				        .endif
+ 00000123  7D 0B		        jge remaining_done
+ 00000125  8A 04 31		        mov al, BYTE PTR [esi + ecx]
+ 00000128  E8 00000000 E	        call BufWriteChar
+ 0000012D  41			        inc ecx
+ 0000012E  EB E2		        jmp remaining_loop
+ 00000130			    remaining_done:
+ 00000130  59			    pop ecx
+				
+ 00000131  5E			    pop esi
+ 00000132  5A			    pop edx
+ 00000133  59			    pop ecx
+ 00000134  5B			    pop ebx
+ 00000135  58			    pop eax
+ 00000136  C3			    ret
+ 00000137			DrawTimers ENDP
+				
+ 00000137			GetPenalty PROC
+				    .if curr_timer == 0
+ 00000140  A1 00000008 R	        mov eax, timer_class
+				    .else
+ 00000147  A1 0000005D R	        mov eax, timer_lab
+				    .endif
+ 0000014C  83 F8 00		    cmp eax, 0
+ 0000014F  7C 05		    jl penalty_applies
+ 00000151  B8 00000000		    mov eax, 0
+ 00000156			    penalty_applies:
+ 00000156  F7 D8		    neg eax
+ 00000158  BA 00000000		    mov edx, 0
+ 0000015D  BB 000003E8		    mov ebx, 1000
+ 00000162  F7 F3		    div ebx
+ 00000164			    done:
+ 00000164  C3			    ret
+ 00000165			GetPenalty ENDP
+				
+ 00000165			SwitchTimers PROC
+ 00000165  C6 05 000000B2 R	    mov curr_timer, 1
 	   01
-
- 000001C3  5F			    pop edi
- 000001C4  5E			    pop esi
- 000001C5  5A			    pop edx
- 000001C6  59			    pop ecx
- 000001C7  5B			    pop ebx
- 000001C8  58			    pop eax
- 000001C9  C3			    ret
- 000001CA			ParseLab ENDP
-
-				; Loads quiz questions
-				; IN: eax = 0=easy, 1=med, 2=hard
- 000001CA			LoadQuiz PROC
- 000001CA  50			    push eax
- 000001CB  53			    push ebx
- 000001CC  51			    push ecx
- 000001CD  52			    push edx
- 000001CE  56			    push esi
-
-				    .if eax == 0
- 000001D3  BA 00000000 R	        mov edx, OFFSET quizFileEasy
-				    .elseif eax == 1
- 000001DF  BA 00000018 R	        mov edx, OFFSET quizFileMed
-				    .else
- 000001E6  BA 00000032 R	        mov edx, OFFSET quizFileHard
-				    .endif
- 000001EB  E8 00000000 E	    call OpenInputFile
- 000001F0  50				push eax
-
- 000001F1  BA 00000091 R	    mov edx, OFFSET quizBuffer
- 000001F6  B9 000007CF		    mov ecx, QUESTION_BUF_SIZE - 1
- 000001FB  E8 00000000 E	    call ReadFromFile
- 00000200  A3 00000861 R	    mov quizBytesRead, eax
- 00000205  C6 80 00000091 R	    mov BYTE PTR [quizBuffer + eax], 0
+ 0000016C  E8 FFFFFE8F		    call StartTimers
+ 00000171  C3			    ret
+ 00000172			SwitchTimers ENDP
+				
+ 00000172			ApplyDinoPenalty PROC
+ 00000172  80 3D 000000B2 R	    cmp curr_timer, 0
 	   00
-
- 0000020C  58				pop eax
- 0000020D  E8 00000000 E		call CloseFile
-
- 00000212  E8 FFFFFDE9		    call ParseQuiz
-
- 00000217  5E			    pop esi
- 00000218  5A			    pop edx
- 00000219  59			    pop ecx
- 0000021A  5B			    pop ebx
- 0000021B  58			    pop eax
- 0000021C  C3			    ret
- 0000021D			LoadQuiz ENDP
-
-				; Loads lab questions
-				; IN: eax = 0=easy, 1=med, 2=hard
- 0000021D			LoadLab PROC
- 0000021D  50			    push eax
- 0000021E  53			    push ebx
- 0000021F  51			    push ecx
- 00000220  52			    push edx
- 00000221  56			    push esi
-
-				    .if eax == 0
- 00000226  BA 0000004A R	        mov edx, OFFSET labFileEasy
-				    .elseif eax == 1
- 00000232  BA 00000061 R	        mov edx, OFFSET labFileMed
-				    .else
- 00000239  BA 0000007A R	        mov edx, OFFSET labFileHard
-				    .endif
- 0000023E  E8 00000000 E	    call OpenInputFile
- 00000243  50				push eax
-
- 00000244  BA 00000A6E R	    mov edx, OFFSET labBuffer
- 00000249  B9 000007CF		    mov ecx, QUESTION_BUF_SIZE - 1
- 0000024E  E8 00000000 E	    call ReadFromFile
- 00000253  A3 0000123E R	    mov labBytesRead, eax
- 00000258  C6 80 00000A6E R	    mov BYTE PTR [labBuffer + eax], 0
+ 00000179  74 1F		    je apply_to_quiz
+				
+ 0000017B  81 2D 0000005D R	    sub timer_lab, 5000
+	   00001388
+ 00000185  83 3D 0000005D R	    cmp timer_lab, 0
 	   00
-
- 0000025F  58				pop eax
- 00000260  E8 00000000 E		call CloseFile
-
- 00000265  E8 FFFFFE7B		    call ParseLab
-
- 0000026A  5E			    pop esi
- 0000026B  5A			    pop edx
- 0000026C  59			    pop ecx
- 0000026D  5B			    pop ebx
- 0000026E  58			    pop eax
- 0000026F  C3			    ret
- 00000270			LoadLab ENDP
-
-				; Draws quiz questions on left panel
- 00000270			DrawQuiz PROC
- 00000270  50			    push eax
- 00000271  53			    push ebx
- 00000272  51			    push ecx
- 00000273  52			    push edx
- 00000274  56			    push esi
-
- 00000275  B9 00000000		    mov ecx, 0
- 0000027A			    dqz_loop:
- 0000027A  A0 000008DD R	        mov al, numQuizQuestions
- 0000027F  3A C8		        cmp cl, al
- 00000281  0F 8D 000000EA	        jge dqz_done
-
- 00000287  8A F1		        mov dh, cl
- 00000289  80 C6 01		        add dh, PANEL_TOP
- 0000028C  B2 01		        mov dl, QUIZ_PANEL_LEFT
- 0000028E  E8 00000000 E	        call BufGotoxy
-
- 00000293  0F B6 D9		        movzx ebx, cl
- 00000296  8B 04 9D		        mov eax, quizOffsets[ebx * 4]
-	   00000865 R
- 0000029D  BA 00000000		        mov edx, 0
-
- 000002A2			        dqz_line:
- 000002A2  BE 00000091 R	            mov esi, OFFSET quizBuffer
- 000002A7  8A 1C 30		            mov bl, BYTE PTR [esi + eax]
- 000002AA  80 FB 00		            cmp bl, 0
- 000002AD  0F 84 000000B8	            je dqz_line_done
- 000002B3  80 FB 0D		            cmp bl, 0Dh
- 000002B6  0F 84 000000AF	            je dqz_line_done
- 000002BC  80 FB 0A		            cmp bl, 0Ah
- 000002BF  0F 84 000000A6	            je dqz_line_done
-
- 000002C5  0F B6 F1		            movzx esi, cl
- 000002C8  0F B6 B6		            movzx esi, BYTE PTR quizBlankStart[esi]
-	   000008B5 R
- 000002CF  3B D6		            cmp edx, esi
- 000002D1  7C 6D		            jl dqz_normal
-
- 000002D3  0F B6 D9		            movzx ebx, cl
- 000002D6  0F B6 9B		            movzx ebx, BYTE PTR quizBlankLen[ebx]
-	   000008C9 R
- 000002DD  03 DE		            add ebx, esi
- 000002DF  3B D3		            cmp edx, ebx
- 000002E1  7D 5D		            jge dqz_normal
-
-				            ; inside blank
-				            .if cl == currQuestion
- 000002EB  50			                push eax
- 000002EC  B8 000000F0		                mov eax, black + (white * 16)
- 000002F1  E8 00000000 E	                call BufSetTextColor
- 000002F6  58			                pop eax
-				            .else
- 000002F9  50			                push eax
- 000002FA  B8 0000000F		                mov eax, white + (black * 16)
- 000002FF  E8 00000000 E	                call BufSetTextColor
- 00000304  58			                pop eax
-				            .endif
-
- 00000305  89 15 0000144D R	            mov draw_col_save, edx
- 0000030B  8B DA		            mov ebx, edx
- 0000030D  2B DE		            sub ebx, esi                ; ebx = answer index
-
- 0000030F  50			            push eax
- 00000310  0F B6 C1		            movzx eax, cl
- 00000313  BE 00000014		            mov esi, ANSWER_MAX_LEN
- 00000318  F7 E6		            mul esi                     ; eax = q*ANSWER_MAX_LEN, edx = 0
- 0000031A  05 000008DE R	            add eax, OFFSET quizAnswers
- 0000031F  8A 04 03		            mov al, BYTE PTR [eax + ebx]
- 00000322  3C 00		            cmp al, 0
- 00000324  75 02		            jne dqz_got_char
- 00000326  B0 5F		            mov al, '_'
- 00000328			            dqz_got_char:
- 00000328  A2 00001451 R	            mov draw_answer_char, al
- 0000032D  58			            pop eax
- 0000032E  8B 15 0000144D R	            mov edx, draw_col_save
-
- 00000334  A0 00001451 R	            mov al, draw_answer_char
- 00000339  E8 00000000 E	            call BufWriteChar
- 0000033E  EB 19		            jmp dqz_advance
-
- 00000340			            dqz_normal:
- 00000340  50			            push eax
- 00000341  B8 0000000F		            mov eax, white + (black * 16)
- 00000346  E8 00000000 E	            call BufSetTextColor
- 0000034B  58			            pop eax
- 0000034C  BE 00000091 R	            mov esi, OFFSET quizBuffer
- 00000351  8A 04 30		            mov al, BYTE PTR [esi + eax]
- 00000354  E8 00000000 E	            call BufWriteChar
-
- 00000359			            dqz_advance:
- 00000359  42			            inc edx
- 0000035A  0F B6 D9		            movzx ebx, cl
- 0000035D  8B 04 9D		            mov eax, quizOffsets[ebx * 4]
-	   00000865 R
- 00000364  03 C2		            add eax, edx
- 00000366  E9 FFFFFF37		            jmp dqz_line
-
- 0000036B			        dqz_line_done:
- 0000036B  41			        inc ecx
- 0000036C  E9 FFFFFF09		        jmp dqz_loop
-
- 00000371			    dqz_done:
- 00000371  5E			    pop esi
- 00000372  5A			    pop edx
- 00000373  59			    pop ecx
- 00000374  5B			    pop ebx
- 00000375  58			    pop eax
- 00000376  C3			    ret
- 00000377			DrawQuiz ENDP
-
-				; Draws lab questions on right panel
- 00000377			DrawLab PROC
- 00000377  50			    push eax
- 00000378  53			    push ebx
- 00000379  51			    push ecx
- 0000037A  52			    push edx
- 0000037B  56			    push esi
-
- 0000037C  B9 00000000		    mov ecx, 0
- 00000381			    dlb_loop:
- 00000381  A0 000012BA R	        mov al, numLabQuestions
- 00000386  3A C8		        cmp cl, al
- 00000388  0F 8D 000000EA	        jge dlb_done
-
- 0000038E  8A F1		        mov dh, cl
- 00000390  80 C6 01		        add dh, PANEL_TOP
- 00000393  B2 27		        mov dl, LAB_PANEL_LEFT
- 00000395  E8 00000000 E	        call BufGotoxy
-
- 0000039A  0F B6 D9		        movzx ebx, cl
- 0000039D  8B 04 9D		        mov eax, labOffsets[ebx * 4]
-	   00001242 R
- 000003A4  BA 00000000		        mov edx, 0
-
- 000003A9			        dlb_line:
- 000003A9  BE 00000A6E R	            mov esi, OFFSET labBuffer
- 000003AE  8A 1C 30		            mov bl, BYTE PTR [esi + eax]
- 000003B1  80 FB 00		            cmp bl, 0
- 000003B4  0F 84 000000B8	            je dlb_line_done
- 000003BA  80 FB 0D		            cmp bl, 0Dh
- 000003BD  0F 84 000000AF	            je dlb_line_done
- 000003C3  80 FB 0A		            cmp bl, 0Ah
- 000003C6  0F 84 000000A6	            je dlb_line_done
-
- 000003CC  0F B6 F1		            movzx esi, cl
- 000003CF  0F B6 B6		            movzx esi, BYTE PTR labBlankStart[esi]
-	   00001292 R
- 000003D6  3B D6		            cmp edx, esi
- 000003D8  7C 6D		            jl dlb_normal
-
- 000003DA  0F B6 D9		            movzx ebx, cl
- 000003DD  0F B6 9B		            movzx ebx, BYTE PTR labBlankLen[ebx]
-	   000012A6 R
- 000003E4  03 DE		            add ebx, esi
- 000003E6  3B D3		            cmp edx, ebx
- 000003E8  7D 5D		            jge dlb_normal
-
-				            ; inside blank
-				            .if cl == currQuestion
- 000003F2  50			                push eax
- 000003F3  B8 000000F0		                mov eax, black + (white * 16)
- 000003F8  E8 00000000 E	                call BufSetTextColor
- 000003FD  58			                pop eax
-				            .else
- 00000400  50			                push eax
- 00000401  B8 0000000F		                mov eax, white + (black * 16)
- 00000406  E8 00000000 E	                call BufSetTextColor
- 0000040B  58			                pop eax
-				            .endif
-
- 0000040C  89 15 0000144D R	            mov draw_col_save, edx
- 00000412  8B DA		            mov ebx, edx
- 00000414  2B DE		            sub ebx, esi
-
- 00000416  50			            push eax
- 00000417  0F B6 C1		            movzx eax, cl
- 0000041A  BE 00000014		            mov esi, ANSWER_MAX_LEN
- 0000041F  F7 E6		            mul esi
- 00000421  05 000012BB R	            add eax, OFFSET labAnswers
- 00000426  8A 04 03		            mov al, BYTE PTR [eax + ebx]
- 00000429  3C 00		            cmp al, 0
- 0000042B  75 02		            jne dlb_got_char
- 0000042D  B0 5F		            mov al, '_'
- 0000042F			            dlb_got_char:
- 0000042F  A2 00001451 R	            mov draw_answer_char, al
- 00000434  58			            pop eax
- 00000435  8B 15 0000144D R	            mov edx, draw_col_save
-
- 0000043B  A0 00001451 R	            mov al, draw_answer_char
- 00000440  E8 00000000 E	            call BufWriteChar
- 00000445  EB 19		            jmp dlb_advance
-
- 00000447			            dlb_normal:
- 00000447  50			            push eax
- 00000448  B8 0000000F		            mov eax, white + (black * 16)
- 0000044D  E8 00000000 E	            call BufSetTextColor
- 00000452  58			            pop eax
- 00000453  BE 00000A6E R	            mov esi, OFFSET labBuffer
- 00000458  8A 04 30		            mov al, BYTE PTR [esi + eax]
- 0000045B  E8 00000000 E	            call BufWriteChar
-
- 00000460			            dlb_advance:
- 00000460  42			            inc edx
- 00000461  0F B6 D9		            movzx ebx, cl
- 00000464  8B 04 9D		            mov eax, labOffsets[ebx * 4]
-	   00001242 R
- 0000046B  03 C2		            add eax, edx
- 0000046D  E9 FFFFFF37		            jmp dlb_line
-
- 00000472			        dlb_line_done:
- 00000472  41			        inc ecx
- 00000473  E9 FFFFFF09		        jmp dlb_loop
-
- 00000478			    dlb_done:
- 00000478  5E			    pop esi
- 00000479  5A			    pop edx
- 0000047A  59			    pop ecx
- 0000047B  5B			    pop ebx
- 0000047C  58			    pop eax
- 0000047D  C3			    ret
- 0000047E			DrawLab ENDP
-
-				; Returns currQuestion in al
- 0000047E			GetCurrQuestion PROC
- 0000047E  A0 0000144C R	    mov al, currQuestion
- 00000483  C3			    ret
- 00000484			GetCurrQuestion ENDP
-
-				; Returns numQuestions for active set in al
- 00000484			GetNumQuestions PROC
- 00000484  80 3D 0000144B R	    cmp activeSet, 0
+ 0000018C  7D 29		    jge adp_done
+ 0000018E  C7 05 0000005D R	    mov timer_lab, 0
+	   00000000
+ 00000198  EB 1D		    jmp adp_done
+				
+ 0000019A			apply_to_quiz:
+ 0000019A  81 2D 00000008 R	    sub timer_class, 5000
+	   00001388
+ 000001A4  83 3D 00000008 R	    cmp timer_class, 0
 	   00
- 0000048B  74 06		    je gnq_quiz
- 0000048D  A0 000012BA R	    mov al, numLabQuestions
- 00000492  C3			    ret
- 00000493			    gnq_quiz:
- 00000493  A0 000008DD R	    mov al, numQuizQuestions
- 00000498  C3			    ret
- 00000499			GetNumQuestions ENDP
-
-				; Returns blank length for question N in active set
-				; IN: al = question index
- 00000499			GetBlankLen PROC
- 00000499  0F B6 C0		    movzx eax, al
- 0000049C  80 3D 0000144B R	    cmp activeSet, 0
+ 000001AB  7D 0A		    jge adp_done
+ 000001AD  C7 05 00000008 R	    mov timer_class, 0
+	   00000000
+				
+ 000001B7			adp_done:
+ 000001B7  C3			    ret
+ 000001B8			ApplyDinoPenalty ENDP
+				
+ 000001B8			ResetTimers PROC
+ 000001B8  C6 05 000000B2 R	    mov curr_timer, 0
 	   00
- 000004A3  74 07		    je gbl_quiz
- 000004A5  8A 80 000012A6 R	    mov al, BYTE PTR labBlankLen[eax]
- 000004AB  C3			    ret
- 000004AC			    gbl_quiz:
- 000004AC  8A 80 000008C9 R	    mov al, BYTE PTR quizBlankLen[eax]
- 000004B2  C3			    ret
- 000004B3			GetBlankLen ENDP
-
-				; Returns answer buffer address in edx for question N in active set
-				; IN: al = question index
-				; Does NOT clobber eax
- 000004B3			GetAnswerBuf PROC
- 000004B3  50			    push eax
- 000004B4  53			    push ebx
- 000004B5  0F B6 C0		    movzx eax, al
- 000004B8  BB 00000014		    mov ebx, ANSWER_MAX_LEN
- 000004BD  F7 E3		    mul ebx
- 000004BF  80 3D 0000144B R	    cmp activeSet, 0
-	   00
- 000004C6  74 0A		    je gab_quiz
- 000004C8  05 000012BB R	    add eax, OFFSET labAnswers
- 000004CD  8B D0		    mov edx, eax
- 000004CF  5B			    pop ebx
- 000004D0  58			    pop eax
- 000004D1  C3			    ret
- 000004D2			    gab_quiz:
- 000004D2  05 000008DE R	    add eax, OFFSET quizAnswers
- 000004D7  8B D0		    mov edx, eax
- 000004D9  5B			    pop ebx
- 000004DA  58			    pop eax
- 000004DB  C3			    ret
- 000004DC			GetAnswerBuf ENDP
-
+ 000001BF  C3			    ret
+ 000001C0			ResetTimers ENDP
+				
 				END
-Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/27/26 19:32:41
-Test.asm						     Symbols 2 - 1
+Microsoft (R) Macro Assembler Version 14.00.24210.0	    04/27/26 19:38:28
+Timers.asm						     Symbols 2 - 1
 
 
 
@@ -779,14 +377,17 @@ Segments and Groups:
 
 FLAT . . . . . . . . . . . . . .	GROUP
 STACK  . . . . . . . . . . . . .	32 Bit	 00001000 Para	  Stack	  'STACK'	 
-_DATA  . . . . . . . . . . . . .	32 Bit	 00001452 Para	  Public  'DATA'	
-_TEXT  . . . . . . . . . . . . .	32 Bit	 000004DC Para	  Public  'CODE'	
+_DATA  . . . . . . . . . . . . .	32 Bit	 000000B3 Para	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 000001C0 Para	  Public  'CODE'	
 
 
 Procedures, parameters, and locals:
 
                 N a m e                 Type     Value    Attr
 
+ApplyDinoPenalty . . . . . . . .	P Near	 00000172 _TEXT	Length= 00000046 Public STDCALL
+  apply_to_quiz  . . . . . . . .	L Near	 0000019A _TEXT	
+  adp_done . . . . . . . . . . .	L Near	 000001B7 _TEXT	
 BufGotoxy  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 BufSetTextColor  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 BufWriteChar . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -798,40 +399,25 @@ CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 CreateOutputFile . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-DrawLab  . . . . . . . . . . . .	P Near	 00000377 _TEXT	Length= 00000107 Public STDCALL
-  dlb_loop . . . . . . . . . . .	L Near	 00000381 _TEXT	
-  dlb_line . . . . . . . . . . .	L Near	 000003A9 _TEXT	
-  dlb_got_char . . . . . . . . .	L Near	 0000042F _TEXT	
-  dlb_normal . . . . . . . . . .	L Near	 00000447 _TEXT	
-  dlb_advance  . . . . . . . . .	L Near	 00000460 _TEXT	
-  dlb_line_done  . . . . . . . .	L Near	 00000472 _TEXT	
-  dlb_done . . . . . . . . . . .	L Near	 00000478 _TEXT	
-DrawQuiz . . . . . . . . . . . .	P Near	 00000270 _TEXT	Length= 00000107 Public STDCALL
-  dqz_loop . . . . . . . . . . .	L Near	 0000027A _TEXT	
-  dqz_line . . . . . . . . . . .	L Near	 000002A2 _TEXT	
-  dqz_got_char . . . . . . . . .	L Near	 00000328 _TEXT	
-  dqz_normal . . . . . . . . . .	L Near	 00000340 _TEXT	
-  dqz_advance  . . . . . . . . .	L Near	 00000359 _TEXT	
-  dqz_line_done  . . . . . . . .	L Near	 0000036B _TEXT	
-  dqz_done . . . . . . . . . . .	L Near	 00000371 _TEXT	
+DrawTimers . . . . . . . . . . .	P Near	 0000008F _TEXT	Length= 000000A8 Public STDCALL
+  filled_loop  . . . . . . . . .	L Near	 000000F3 _TEXT	
+  filled_done  . . . . . . . . .	L Near	 00000102 _TEXT	
+  remaining_loop . . . . . . . .	L Near	 00000112 _TEXT	
+  remaining_done . . . . . . . .	L Near	 00000130 _TEXT	
 DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToDosDateTime  . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FileTimeToSystemTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FindArrString  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 FormatMessageA . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetAnswerBuf . . . . . . . . . .	P Near	 000004B3 _TEXT	Length= 00000029 Public STDCALL
-  gab_quiz . . . . . . . . . . .	L Near	 000004D2 _TEXT	
-GetBlankLen  . . . . . . . . . .	P Near	 00000499 _TEXT	Length= 0000001A Public STDCALL
-  gbl_quiz . . . . . . . . . . .	L Near	 000004AC _TEXT	
 GetCommandLineA  . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetCommandTail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleCP . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetConsoleScreenBufferInfo . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetCurrQuestion  . . . . . . . .	P Near	 0000047E _TEXT	Length= 00000006 Public STDCALL
 GetDateTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetFileTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetKeyState  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -839,9 +425,10 @@ GetLastError . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 GetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetMaxXY . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetMseconds  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-GetNumQuestions  . . . . . . . .	P Near	 00000484 _TEXT	Length= 00000015 Public STDCALL
-  gnq_quiz . . . . . . . . . . .	L Near	 00000493 _TEXT	
 GetNumberOfConsoleInputEvents  .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetPenalty . . . . . . . . . . .	P Near	 00000137 _TEXT	Length= 0000002E Public STDCALL
+  penalty_applies  . . . . . . .	L Near	 00000156 _TEXT	
+  done . . . . . . . . . . . . .	L Near	 00000164 _TEXT	
 GetProcessHeap . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetStdHandle . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 GetSystemTime  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -854,8 +441,6 @@ HeapDestroy  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 HeapFree . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 HeapSize . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 IsDigit  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-LoadLab  . . . . . . . . . . . .	P Near	 0000021D _TEXT	Length= 00000053 Public STDCALL
-LoadQuiz . . . . . . . . . . . .	P Near	 000001CA _TEXT	Length= 00000053 Public STDCALL
 LocalFree  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MessageBoxA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 MsgBoxAsk  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -863,20 +448,6 @@ MsgBox . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 OpenInputFile  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ParseDecimal32 . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ParseInteger32 . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
-ParseLab . . . . . . . . . . . .	P Near	 000000E5 _TEXT	Length= 000000E5 Public STDCALL
-  lp_loop  . . . . . . . . . . .	L Near	 00000127 _TEXT	
-  lp_count . . . . . . . . . . .	L Near	 00000153 _TEXT	
-  lp_newline . . . . . . . . . .	L Near	 00000162 _TEXT	
-  lp_next  . . . . . . . . . . .	L Near	 0000019A _TEXT	
-  lp_done  . . . . . . . . . . .	L Near	 0000019D _TEXT	
-  lp_skip  . . . . . . . . . . .	L Near	 000001B5 _TEXT	
-ParseQuiz  . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 000000E5 Public STDCALL
-  qp_loop  . . . . . . . . . . .	L Near	 00000042 _TEXT	
-  qp_count . . . . . . . . . . .	L Near	 0000006E _TEXT	
-  qp_newline . . . . . . . . . .	L Near	 0000007D _TEXT	
-  qp_next  . . . . . . . . . . .	L Near	 000000B5 _TEXT	
-  qp_done  . . . . . . . . . . .	L Near	 000000B8 _TEXT	
-  qp_skip  . . . . . . . . . . .	L Near	 000000D0 _TEXT	
 PeekConsoleInputA  . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Random32 . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 RandomRange  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -893,6 +464,7 @@ ReadInt  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 ReadKeyFlush . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ReadKey  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ReadString . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ResetTimers  . . . . . . . . . .	P Near	 000001B8 _TEXT	Length= 00000008 Public STDCALL
 SetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SetConsoleCursorPosition . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 SetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -905,13 +477,16 @@ SetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External
 SetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 ShowFPUStack . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Sleep  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+StartTimers  . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 0000002F Public STDCALL
 StrLength  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_compare  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_copy . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_length . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_trim . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 Str_ucase  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SwitchTimers . . . . . . . . . .	P Near	 00000165 _TEXT	Length= 0000000D Public STDCALL
 SystemTimeToFileTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+UpdateTimers . . . . . . . . . .	P Near	 0000002F _TEXT	Length= 00000060 Public STDCALL
 WaitMsg  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteBinB  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
 WriteBin . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
@@ -949,7 +524,6 @@ Symbols:
 @fardata . . . . . . . . . . . .	Text   	 FLAT
 @stack . . . . . . . . . . . . .	Text   	 FLAT
 ALT_MASK . . . . . . . . . . . .	Number	 00000003h   
-ANSWER_MAX_LEN . . . . . . . . .	Number	 00000014h   
 CAPSLOCK_ON  . . . . . . . . . .	Number	 00000080h   
 CREATE_ALWAYS  . . . . . . . . .	Number	 00000002h   
 CREATE_NEW . . . . . . . . . . .	Number	 00000001h   
@@ -1020,10 +594,8 @@ INVALID_HANDLE_VALUE . . . . . .	Number	 -00000001h
 KBDOWN_FLAG  . . . . . . . . . .	Number	 00000001h   
 KEY_EVENT  . . . . . . . . . . .	Number	 00000001h   
 KEY_MASKS  . . . . . . . . . . .	Number	 0000001Fh   
-LAB_PANEL_LEFT . . . . . . . . .	Number	 00000027h   
 LEFT_ALT_PRESSED . . . . . . . .	Number	 00000002h   
 LEFT_CTRL_PRESSED  . . . . . . .	Number	 00000008h   
-MAX_QUESTIONS  . . . . . . . . .	Number	 00000014h   
 MB_ABORTRETRYIGNORE  . . . . . .	Number	 00000002h   
 MB_APPLMODAL . . . . . . . . . .	Number	 00000000h   
 MB_CANCELTRYCONTINUE . . . . . .	Number	 00000006h   
@@ -1055,10 +627,7 @@ NULL . . . . . . . . . . . . . .	Number	 00000000h
 NUMLOCK_ON . . . . . . . . . . .	Number	 00000020h   
 OPEN_ALWAYS  . . . . . . . . . .	Number	 00000004h   
 OPEN_EXISTING  . . . . . . . . .	Number	 00000003h   
-PANEL_TOP  . . . . . . . . . . .	Number	 00000001h   
 PeekConsoleInput . . . . . . . .	Text   	 PeekConsoleInputA
-QUESTION_BUF_SIZE  . . . . . . .	Number	 000007D0h   
-QUIZ_PANEL_LEFT  . . . . . . . .	Number	 00000001h   
 RIGHT_ALT_PRESSED  . . . . . . .	Number	 00000001h   
 RIGHT_CTRL_PRESSED . . . . . . .	Number	 00000004h   
 ReadConsoleInput . . . . . . . .	Text   	 ReadConsoleInputA
@@ -1073,6 +642,14 @@ SetConsoleTitle  . . . . . . . .	Text   	 SetConsoleTitleA
 TAB  . . . . . . . . . . . . . .	Number	 00000009h   
 TRUE . . . . . . . . . . . . . .	Number	 00000001h   
 TRUNCATE_EXISTING  . . . . . . .	Number	 00000005h   
+T_CLASS_CHAR_LENGTH  . . . . . .	Number	 00000050h   
+T_CLASS_INITIAL  . . . . . . . .	Number	 0000C350h   
+T_CLASS_POS_X  . . . . . . . . .	Number	 00000000h   
+T_CLASS_POS_Y  . . . . . . . . .	Number	 00000018h   
+T_LAB_CHAR_LENGTH  . . . . . . .	Number	 00000050h   
+T_LAB_INITIAL  . . . . . . . . .	Number	 0000C350h   
+T_LAB_POS_X  . . . . . . . . . .	Number	 00000000h   
+T_LAB_POS_Y  . . . . . . . . . .	Number	 00000018h   
 VK_11  . . . . . . . . . . . . .	Number	 000000BDh   
 VK_12  . . . . . . . . . . . . .	Number	 000000BBh   
 VK_ADD . . . . . . . . . . . . .	Number	 0000006Bh   
@@ -1154,26 +731,15 @@ VK_UP  . . . . . . . . . . . . .	Number	 00000026h
 WINDOW_BUFFER_SIZE_EVENT . . . .	Number	 00000004h   
 WriteConsoleOutputCharacter  . .	Text   	 WriteConsoleOutputCharacterA
 WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
-activeSet  . . . . . . . . . . .	Byte	 0000144B _DATA	
 black  . . . . . . . . . . . . .	Number	 00000000h   
 blue . . . . . . . . . . . . . .	Number	 00000001h   
 brown  . . . . . . . . . . . . .	Number	 00000006h   
-currQuestion . . . . . . . . . .	Byte	 0000144C _DATA	Public STDCALL
+curr_timer . . . . . . . . . . .	Byte	 000000B2 _DATA	
+curr_time  . . . . . . . . . . .	DWord	 00000004 _DATA	
 cyan . . . . . . . . . . . . . .	Number	 00000003h   
-draw_answer_char . . . . . . . .	Byte	 00001451 _DATA	
-draw_col_save  . . . . . . . . .	DWord	 0000144D _DATA	
 exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
 gray . . . . . . . . . . . . . .	Number	 00000008h   
 green  . . . . . . . . . . . . .	Number	 00000002h   
-labAnswers . . . . . . . . . . .	Byte	 000012BB _DATA	
-labBlankLen  . . . . . . . . . .	Byte	 000012A6 _DATA	
-labBlankStart  . . . . . . . . .	Byte	 00001292 _DATA	
-labBuffer  . . . . . . . . . . .	Byte	 00000A6E _DATA	
-labBytesRead . . . . . . . . . .	DWord	 0000123E _DATA	
-labFileEasy  . . . . . . . . . .	Byte	 0000004A _DATA	
-labFileHard  . . . . . . . . . .	Byte	 0000007A _DATA	
-labFileMed . . . . . . . . . . .	Byte	 00000061 _DATA	
-labOffsets . . . . . . . . . . .	DWord	 00001242 _DATA	
 lightBlue  . . . . . . . . . . .	Number	 00000009h   
 lightCyan  . . . . . . . . . . .	Number	 0000000Bh   
 lightGray  . . . . . . . . . . .	Number	 00000007h   
@@ -1181,18 +747,12 @@ lightGreen . . . . . . . . . . .	Number	 0000000Ah
 lightMagenta . . . . . . . . . .	Number	 0000000Dh   
 lightRed . . . . . . . . . . . .	Number	 0000000Ch   
 magenta  . . . . . . . . . . . .	Number	 00000005h   
-numLabQuestions  . . . . . . . .	Byte	 000012BA _DATA	
-numQuizQuestions . . . . . . . .	Byte	 000008DD _DATA	
-quizAnswers  . . . . . . . . . .	Byte	 000008DE _DATA	
-quizBlankLen . . . . . . . . . .	Byte	 000008C9 _DATA	
-quizBlankStart . . . . . . . . .	Byte	 000008B5 _DATA	
-quizBuffer . . . . . . . . . . .	Byte	 00000091 _DATA	
-quizBytesRead  . . . . . . . . .	DWord	 00000861 _DATA	
-quizFileEasy . . . . . . . . . .	Byte	 00000000 _DATA	
-quizFileHard . . . . . . . . . .	Byte	 00000032 _DATA	
-quizFileMed  . . . . . . . . . .	Byte	 00000018 _DATA	
-quizOffsets  . . . . . . . . . .	DWord	 00000865 _DATA	
+prev_time  . . . . . . . . . . .	DWord	 00000000 _DATA	
 red  . . . . . . . . . . . . . .	Number	 00000004h   
+t_class_text . . . . . . . . . .	Byte	 0000000C _DATA	
+t_lab_text . . . . . . . . . . .	Byte	 00000061 _DATA	
+timer_class  . . . . . . . . . .	DWord	 00000008 _DATA	
+timer_lab  . . . . . . . . . . .	DWord	 0000005D _DATA	
 white  . . . . . . . . . . . . .	Number	 0000000Fh   
 wsprintf . . . . . . . . . . . .	Text   	 wsprintfA
 yellow . . . . . . . . . . . . .	Number	 0000000Eh   

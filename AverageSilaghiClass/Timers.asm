@@ -39,6 +39,7 @@ PUBLIC SwitchTimers
 PUBLIC DrawTimers
 PUBLIC GetPenalty
 PUBLIC ApplyDinoPenalty
+PUBLIC ResetTimers
 
 StartTimers PROC
     call GetMseconds
@@ -211,5 +212,10 @@ apply_to_quiz:
 adp_done:
     ret
 ApplyDinoPenalty ENDP
+
+ResetTimers PROC
+    mov curr_timer, 0
+    ret
+ResetTimers ENDP
 
 END
