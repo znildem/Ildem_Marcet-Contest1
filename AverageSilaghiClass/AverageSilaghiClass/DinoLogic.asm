@@ -176,8 +176,8 @@ obstacle_type_done:
 	jmp done_height
 
 set_flying_height:
-	; flying enemy: height 3..5
-	mov eax, 3
+	; flying enemy: height 3..8 (within dino reach)
+	mov eax, 6
 	call RandomRange
 	add eax, 3
 	mov cactusHeight, al
