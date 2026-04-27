@@ -22,6 +22,8 @@ EXTERN cactusHeight:BYTE
 EXTERN cactusSpeed:SDWORD
 EXTERN birdFrame:BYTE
 EXTERN dinoDuck:BYTE
+EXTERN controlsX:SDWORD
+EXTERN controlsDone:BYTE
 
 .code
 
@@ -36,6 +38,8 @@ DinoInit PROC
 	mov cactusSpeed, 1
 	mov birdFrame, 0
 	mov dinoDuck, 0
+	mov controlsX, 24
+	mov controlsDone, 0
 	ret
 DinoInit ENDP
 
@@ -81,6 +85,21 @@ try_jump:
 	mov dinoVy, 5
 
 skip_input:
+
+	; Move controls text from right to left once
+	cmp controlsDone, 1
+	je skip_controls_move
+
+	mov eax, controlsX
+	dec eax
+	mov controlsX, eax
+
+	cmp eax, 2
+	jge skip_controls_move
+
+	mov controlsDone, 1
+
+skip_controls_move:
 
 	; dinoY += dinoVy
 	mov eax, dinoY

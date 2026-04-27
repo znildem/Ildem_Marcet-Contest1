@@ -13,6 +13,8 @@ EXTERN cactusType:BYTE
 EXTERN cactusHeight:BYTE
 EXTERN birdFrame:BYTE
 EXTERN dinoDuck:BYTE
+EXTERN controlsX:SDWORD
+EXTERN controlsDone:BYTE
 
 ; Simple ASCII representations
 dinoSprite1 BYTE "    ",219,219,219,219,0
@@ -55,6 +57,7 @@ birdB2 BYTE "<(o )/",0
 
 scoreText BYTE "Score: ",0
 gameOverText BYTE "GAME OVER - press any key",0
+controlsText BYTE "Space/Up = Jump   Down = Duck",0
 
 grassLine BYTE 37 DUP(219),0
 
@@ -71,6 +74,25 @@ DrawDinoGame PROC
 
 	mov eax, dinoScore
 	call WriteDec
+
+	; Draw scrolling controls text once on score row
+	cmp controlsDone, 1
+	je skip_controls_text
+
+	mov eax, lightMagenta + (black * 16)
+	call SetTextColor
+	mov dh, 1
+	mov eax, controlsX
+	mov eax, 14
+	mov dl, al
+	call Gotoxy
+	mov edx, OFFSET controlsText
+	call WriteString
+
+	mov eax, white + (black * 16)
+	call SetTextColor
+
+skip_controls_text:
 
 	; Draw green grass line
 	mov eax, green + (black * 16)
