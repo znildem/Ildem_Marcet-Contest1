@@ -19,6 +19,7 @@ EXTERN birdFrame:BYTE
 EXTERN dinoDuck:BYTE
 EXTERN controlsX:SDWORD
 EXTERN controlsDone:BYTE
+EXTERN dinoRunFrame:BYTE
 
 ; Simple ASCII representations
 dinoSprite1 BYTE "    ",219,219,219,219,0
@@ -29,6 +30,8 @@ dinoSprite5 BYTE 219,219,219,219,219,219,219,219,219,219," ",0
 dinoSprite6 BYTE "  ",219,219,219,219,219,219,219,"  ",0
 dinoSprite7 BYTE "  ",219,219," ",219,219,"    ",0
 dinoSprite8 BYTE "  ",219,"  ",219,"     ",0
+dinoLegsRun1 BYTE " ",219,219,"   ",219,"    ",0
+dinoLegsRun2 BYTE "   ",219,"   ",219,219,"  ",0
 
 duckSprite1 BYTE "       ",219,219,219,219,0
 duckSprite2 BYTE "      ",219,"o",219,219,219,219,0
@@ -326,6 +329,24 @@ cactus_done:
 	mov dh, bl
 	mov dl, 5
 	call BufGotoxy
+
+	cmp dinoY, 0
+	jne draw_normal_feet
+
+	movzx eax, dinoRunFrame
+	cmp eax, 0
+	je draw_run_feet_1
+
+	mov edx, OFFSET dinoLegsRun2
+	call BufWriteString
+	ret
+
+draw_run_feet_1:
+	mov edx, OFFSET dinoLegsRun1
+	call BufWriteString
+	ret
+
+draw_normal_feet:
 	mov edx, OFFSET dinoSprite8
 	call BufWriteString
 

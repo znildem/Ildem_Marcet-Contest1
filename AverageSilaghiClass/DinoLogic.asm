@@ -26,6 +26,8 @@ EXTERN birdFrame:BYTE
 EXTERN dinoDuck:BYTE
 EXTERN controlsX:SDWORD
 EXTERN controlsDone:BYTE
+EXTERN dinoRunFrame:BYTE
+EXTERN dinoRunCounter:BYTE
 
 .code
 
@@ -42,6 +44,8 @@ DinoInit PROC
 	mov dinoDuck, 0
 	mov controlsX, 24
 	mov controlsDone, 0
+	mov dinoRunFrame, 0
+	mov dinoRunCounter, 0
 	ret
 DinoInit ENDP
 
@@ -102,6 +106,38 @@ skip_input:
 	mov controlsDone, 1
 
 skip_controls_move:
+	
+	; Animate running legs only on ground and not ducking
+	mov eax, dinoY
+	cmp eax, 0
+	jne skip_run_anim
+
+	cmp dinoDuck, 1
+	je skip_run_anim
+
+	mov al, dinoRunCounter
+	inc al
+	mov dinoRunCounter, al
+
+	mov eax, cactusSpeed
+	mov ebx, 6
+	sub ebx, eax
+
+	cmp ebx, 1
+	jge run_delay_ok
+	mov ebx, 1
+
+run_delay_ok:
+	movzx eax, dinoRunCounter
+	cmp eax, ebx
+	jl skip_run_anim
+
+	mov dinoRunCounter, 0
+	mov al, dinoRunFrame
+	xor al, 1
+	mov dinoRunFrame, al
+
+skip_run_anim:
 
 	; dinoY += dinoVy
 	mov eax, dinoY
@@ -247,7 +283,7 @@ bird_collision:
 	mov ecx, 13
 	sub ecx, dinoY
 
-	cmp ecx, ebx
+	cmp eax, ecx
 	jg tick_end
 
 	; If bird top is below dino bottom, no collision

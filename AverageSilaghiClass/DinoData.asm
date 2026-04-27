@@ -15,6 +15,8 @@ PUBLIC birdFrame
 PUBLIC dinoDuck
 PUBLIC controlsX
 PUBLIC controlsDone
+PUBLIC dinoRunFrame
+PUBLIC dinoRunCounter
 
 ; Dino vertical position
 ; 0 = on ground
@@ -50,5 +52,9 @@ dinoDuck BYTE 0
 
 controlsX SDWORD 24
 controlsDone BYTE 0
+
+; running leg animation
+dinoRunFrame BYTE 0
+dinoRunCounter BYTE 0
 
 END
