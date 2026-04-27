@@ -161,12 +161,16 @@ DrawDinoCountdown PROC
 	mov dh, 8
 	mov dl, 37
 	call DrawBigCountdown
+	call UpdateTimers
+	call DrawTimers
     call FlushScreenBuffer
     mov eax, 500
     call Delay
 
 	call BufClearScreen
     call DrawDinoBase
+	call UpdateTimers
+	call DrawTimers
     call FlushScreenBuffer
     mov eax, 200
     call Delay
@@ -184,12 +188,16 @@ DrawDinoCountdown PROC
 	mov dh, 8
 	mov dl, 37
 	call DrawBigCountdown
+	call UpdateTimers
+	call DrawTimers
     call FlushScreenBuffer
     mov eax, 500
     call Delay
 
     call BufClearScreen
     call DrawDinoBase
+	call UpdateTimers
+	call DrawTimers
     call FlushScreenBuffer
     mov eax, 200
     call Delay
@@ -207,12 +215,16 @@ DrawDinoCountdown PROC
 	mov dh, 8
 	mov dl, 37
 	call DrawBigCountdown
+	call UpdateTimers
+	call DrawTimers
     call FlushScreenBuffer
     mov eax, 500
     call Delay
 
     call BufClearScreen
     call DrawDinoBase
+	call UpdateTimers
+	call DrawTimers
     call FlushScreenBuffer
     mov eax, 200
     call Delay
@@ -230,6 +242,8 @@ DrawDinoCountdown PROC
 	mov dh, 8
 	mov dl, 34
 	call DrawBigCountdown
+	call UpdateTimers
+	call DrawTimers
     call FlushScreenBuffer
     mov eax, 600
     call Delay
@@ -312,6 +326,7 @@ Game PROC
 
 press_enter_loop_start:
     call UpdateTimers
+	call DrawTimers
     call FlushScreenBuffer
     mov eax, 50
     call Delay
