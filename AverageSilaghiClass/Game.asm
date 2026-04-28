@@ -48,6 +48,8 @@ PUBLIC currState
 currState BYTE ?
 
 last_input BYTE 0
+DINO_RUN_TIME = 10000
+dinoStartTime DWORD 0
 
 scoreQuizLabel  BYTE "Score: ", 0
 scoreLabLabel   BYTE "Score: ", 0
@@ -88,8 +90,30 @@ countLine3 DWORD 0
 countLine4 DWORD 0
 countLine5 DWORD 0
 
+
+
 .code
 PUBLIC Game
+
+StartDinoRunTimer PROC
+	call GetMseconds
+	mov dinoStartTime, eax
+	ret
+StartDinoRunTimer ENDP
+
+DinoTimerExpired PROC
+	call GetMseconds
+	sub eax, dinoStartTime
+	cmp eax, DINO_RUN_TIME
+	jge dino_timer_done
+
+	mov al, 0
+	ret
+
+dino_timer_done:
+	mov al, 1
+	ret
+DinoTimerExpired ENDP
 
 DrawBigCountdown PROC
 	; ESI = line 1
@@ -341,6 +365,7 @@ press_enter_loop_start:
     mov currState, 1
 	call DrawDinoCountdown
     call DinoInit
+	call StartDinoRunTimer
 
 getting_quiz_loop_start:
     call BufClearScreen
@@ -353,8 +378,16 @@ getting_quiz_loop_start:
     call Delay
 
     call DinoIsDone
-    cmp al, 0
-    je getting_quiz_loop_start
+	cmp al, 0
+	jne state1_check_result
+
+	call DinoTimerExpired
+	cmp al, 1
+	je state1_done
+
+	jmp getting_quiz_loop_start
+
+state1_check_result:
 
     call DinoWasSuccess
     cmp al, 1
@@ -398,6 +431,7 @@ quiz_loop_start:
     mov currState, 3
 	call DrawDinoCountdown
     call DinoInit
+	call StartDinoRunTimer
 
 turning_in_quiz_loop_start:
     call BufClearScreen
@@ -410,8 +444,16 @@ turning_in_quiz_loop_start:
     call Delay
 
     call DinoIsDone
-    cmp al, 0
-    je turning_in_quiz_loop_start
+	cmp al, 0
+	jne state3_check_result
+
+	call DinoTimerExpired
+	cmp al, 1
+	je state3_done
+
+	jmp turning_in_quiz_loop_start
+
+state3_check_result:
 
     call DinoWasSuccess
     cmp al, 1
@@ -429,6 +471,7 @@ state3_done:
     call LoadLab
 	call DrawDinoCountdown
     call DinoInit
+	call StartDinoRunTimer
 
 getting_lab_loop_start:
     call BufClearScreen
@@ -441,8 +484,16 @@ getting_lab_loop_start:
     call Delay
 
     call DinoIsDone
-    cmp al, 0
-    je getting_lab_loop_start
+	cmp al, 0
+	jne state4_check_result
+
+	call DinoTimerExpired
+	cmp al, 1
+	je state4_done
+
+	jmp getting_lab_loop_start
+
+state4_check_result:
 
     call DinoWasSuccess
     cmp al, 1
@@ -486,6 +537,7 @@ lab_loop_start:
     mov currState, 6
 	call DrawDinoCountdown
     call DinoInit
+	call StartDinoRunTimer
 
 turning_in_lab_loop_start:
     call BufClearScreen
@@ -498,8 +550,16 @@ turning_in_lab_loop_start:
     call Delay
 
     call DinoIsDone
-    cmp al, 0
-    je turning_in_lab_loop_start
+	cmp al, 0
+	jne state6_check_result
+
+	call DinoTimerExpired
+	cmp al, 1
+	je state6_done
+
+	jmp turning_in_lab_loop_start
+
+state6_check_result:
 
     call DinoWasSuccess
     cmp al, 1
