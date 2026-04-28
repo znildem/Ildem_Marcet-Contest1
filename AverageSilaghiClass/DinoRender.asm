@@ -136,7 +136,7 @@ draw_objects:
 	mov eax, cactusX
 	mov dl, al
 	movzx ebx, cactusHeight
-	mov dh, 15
+	mov dh, 16
 	sub dh, bl
 	call BufGotoxy
 	mov edx, OFFSET cactusLarge1
@@ -145,19 +145,10 @@ draw_objects:
 	mov eax, cactusX
 	mov dl, al
 	movzx ebx, cactusHeight
-	mov dh, 16
-	sub dh, bl
-	call BufGotoxy
-	mov edx, OFFSET cactusLarge2
-	call BufWriteString
-
-	mov eax, cactusX
-	mov dl, al
-	movzx ebx, cactusHeight
 	mov dh, 17
 	sub dh, bl
 	call BufGotoxy
-	mov edx, OFFSET cactusLarge3
+	mov edx, OFFSET cactusLarge2
 	call BufWriteString
 
 	mov eax, cactusX
