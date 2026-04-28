@@ -1,63 +1,46 @@
-Project Title: Dino Game (Assembly)
+Project Title: Average Silaghi Class (Assembly)
 
 Authors:
-- Neva Ildem
-- Pedro Marcet
+Neva Ildem
+Pedro Marcet
 
 Description:
-This project implements a simple side-scrolling game in x86 assembly using the Irvine32 library. The player controls a dinosaur that must jump over obstacles (cactus) to survive and score points.
+This project implements a side-scrolling dinosaur game in x86 assembly using the Irvine32 library. The player controls a dinosaur that must avoid obstacles such as cacti and birds while the game increases in difficulty over time.
 
 Features:
 - Keyboard input using GetAsyncKeyState
-- Gravity and jump physics
-- Moving obstacles
+- Jumping and ducking mechanics
+- Gravity-based movement physics
+- Animated dinosaur (running and ducking)
+- Multiple obstacle types (small cactus, large cactus, flying birds)
+- Increasing difficulty (speed, spawn distance, bird frequency)
 - Score tracking
-- Collision detection
+- Collision detection (with tuned hitboxes)
+- Animated countdown (3, 2, 1, GO)
+- Timer-controlled gameplay sections
+
+Controls:
+- SPACE / UP ARROW → Jump
+- DOWN ARROW → Duck
 
 How to Compile:
-1. Open the project in Visual Studio (MASM setup required)
-2. Ensure Irvine32 is properly linked
-3. Build the solution
+Option 1 (Visual Studio):
+- Open the project in Visual Studio (MASM configured)
+- Ensure Irvine32 is properly linked
+- Build the solution (Ctrl + Shift + B)
 
-OR (if using command line):
+Option 2 (Command Line):
 ml /c /coff main.asm
 link /SUBSYSTEM:CONSOLE main.obj Irvine32.lib
 
-Project Title: Dino Game (Assembly)
-
-Authors:
-- Neva Ildem
-- Marcet
-
-Description:
-This project implements a side-scrolling dinosaur game in x86 assembly using the Irvine32 library. The player controls a dinosaur that must jump over obstacles (cactus) while the game tracks score and increases difficulty over time.
-
-Features:
-- Keyboard input using GetAsyncKeyState
-- Gravity and jump physics
-- Moving obstacles (cactus)
-- Collision detection
-- Score tracking
-- Timer-based game loop for consistent speed
-
-How to Compile:
-1. Open the project in Visual Studio with MASM configured
-2. Ensure Irvine32 library is properly linked
-3. Build the solution (Ctrl + Shift + B)
-
 How to Run:
 - Run the generated executable
-- Press SPACE or UP ARROW to jump
+- Follow on-screen instructions
 
 Notes:
-- This project uses GetAsyncKeyState for keyboard input, which was not taught in class.
-  We learned how to use it from Microsoft documentation:
-  https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
+- GetAsyncKeyState was used for real-time keyboard input (not covered in class)
+  Documentation: https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
 
-- This project also uses timer-based logic to control the game loop and movement speed.
-  Timer usage was not taught in class.
-  We learned how to implement timing through external documentation and by adapting examples.
+- Timer-based logic was implemented to maintain consistent gameplay speed and control timed sections of the game.
 
-- Timer logic is used to ensure consistent gameplay speed independent of CPU performance.
-
-- All features were implemented by understanding and applying external documentation.
+- All additional features were developed by referencing external documentation and adapting concepts to assembly.
