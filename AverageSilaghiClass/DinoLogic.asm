@@ -356,7 +356,7 @@ DinoTick ENDP
 
 DinoIsDone PROC
 	mov eax, dinoScore
-	cmp eax, 6
+	cmp eax, 3
 	jge dino_done
 
 	cmp dinoGameOver, 1

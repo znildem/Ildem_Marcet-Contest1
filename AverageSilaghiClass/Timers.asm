@@ -197,14 +197,14 @@ ApplyDinoPenalty PROC
     cmp curr_timer, 0
     je apply_to_quiz
 
-    sub timer_lab, 5000
+    sub timer_lab, 20000
     cmp timer_lab, 0
     jge adp_done
     mov timer_lab, 0
     jmp adp_done
 
 apply_to_quiz:
-    sub timer_class, 5000
+    sub timer_class, 20000
     cmp timer_class, 0
     jge adp_done
     mov timer_class, 0
